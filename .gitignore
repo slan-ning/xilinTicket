@@ -11,3 +11,14 @@
 *.lai
 *.la
 *.a
+
+*.sdf
+*.obj
+*.suo
+
+sources/ipch
+sources/Debug
+sources/Release
+
+sources/BuyTicket/Debug
+sources/BuyTicket/Release
