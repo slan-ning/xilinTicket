@@ -2180,7 +2180,7 @@ bool CHuoche::Login(std::string username, std::string password, std::string code
 bool CHuoche::GetCode(void)
 {
 	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/loginAction.do?method=init";
-	return this->http->GetFile("https://dynamic.12306.cn/otsweb/passCodeAction.do?rand=sjrand","c:\\buyticket.png");
+	return this->http->GetFile("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=login&rand=sjrand","c:\\buyticket.png");
 }
 
 
@@ -2200,6 +2200,30 @@ void CHuoche::SearchTicket(std::string fromStation,std::string toStation,std::st
 	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init";
 	std::string	url="https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=queryLeftTicket&orderRequest.train_date="+this->date+"&orderRequest.from_station_telecode="+this->fromCode+"&orderRequest.to_station_telecode="+this->toCode+"&orderRequest.train_no=&trainPassType=QB&trainClass=QB%23D%23Z%23T%23K%23QT%23&includeStudent=00&seatTypeAndNum=&orderRequest.start_time_str=00%3A00--24%3A00";
 	this->http->AsyGet(url,boost::bind(&CHuoche::RecvSchPiao,this,_1,_2,_3));
+
+}
+
+bool CHuoche::isTicketEnough(std::string tickstr)
+{
+	if(tickstr=="--" || tickstr=="*" || tickstr.find("无")!=std::string::npos)
+		return false;
+
+	if(tickstr.find("有")!=std::string::npos)
+		return true;
+
+	CString fullname2;
+	this->dlg->GetDlgItem(IDC_FULLNAME2)->GetWindowText(fullname2);
+	fullname2.Trim();
+
+	int ticket_num=atoi(tickstr.c_str());
+
+	if(!fullname2.IsEmpty())
+	{
+		return ticket_num>=2;
+	}else
+	{
+		return ticket_num>=1;
+	}
 
 }
 
@@ -2238,7 +2262,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 				ticks=ticks.substr(ticks.find(",")+1);
 				strs.push_back(tick);
 			}
-			if(strs.at(6)!="--"&&strs.at(6)!="*"&&strs.at(6).find("无")==std::string::npos&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YDZ))
+			if(this->isTicketEnough(strs.at(6))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YDZ))
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
@@ -2252,7 +2276,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 				
 
 			}
-			else if(strs.at(7)!="--"&&strs.at(7)!="*"&&strs.at(7).find("无")==std::string::npos&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
+			else if(this->isTicketEnough(strs.at(7))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
@@ -2266,7 +2290,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 				
 
 			}
-			else if(strs.at(9)!="--"&&strs.at(9)!="*"&&strs.at(9).find("无")==std::string::npos&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
+			else if(this->isTicketEnough(strs.at(9))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
@@ -2280,7 +2304,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 				
 
 			}
-			else if(strs.at(10)!="--"&&strs.at(10)!="*"&&strs.at(10).find("无")==std::string::npos&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
+			else if(this->isTicketEnough(strs.at(10))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
@@ -2293,7 +2317,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 				}
 				
 
-			}else if(strs.at(12)!="--"&&strs.at(12)!="*"&&strs.at(12).find("无")==std::string::npos &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
+			}else if(this->isTicketEnough(strs.at(12)) &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
 			{
 				this->showMsg(trainstr+"有硬座");
 				if(seat=="")
@@ -2413,15 +2437,26 @@ void CHuoche::RecvSubmitOrder(std::map<std::string,std::string> respone, char * 
 	string to_station_name=weblib::UrlEncode(weblib::Utf8Encode(weblib::GetFormInputValue(restr,"name=\"orderRequest.to_station_name\"")));
 
 	CString fullname,idcard,phone;
+	CString fullname2,idcard2,phone2;
 	this->dlg->GetDlgItem(IDC_FULLNAME)->GetWindowText(fullname);
 	this->dlg->GetDlgItem(IDC_IDCARD)->GetWindowText(idcard);
 	this->dlg->GetDlgItem(IDC_PHONE)->GetWindowText(phone);
 
+	this->dlg->GetDlgItem(IDC_FULLNAME2)->GetWindowText(fullname2);
+	this->dlg->GetDlgItem(IDC_IDCARD2)->GetWindowText(idcard2);
+	this->dlg->GetDlgItem(IDC_PHONE2)->GetWindowText(phone2);
+
 	string myName=fullname.GetBuffer();
 	string IdCard=idcard.GetBuffer();
 	string Phone=phone.GetBuffer();
+
+	string myName2=fullname2.GetBuffer();
+	string IdCard2=idcard2.GetBuffer();
+	string Phone2=phone2.GetBuffer();
+
 	string seattype=seat;//座位类型 3为卧铺 1为硬座
 	myName=weblib::UrlEncode(weblib::Utf8Encode(myName));
+	myName2=weblib::UrlEncode(weblib::Utf8Encode(myName2));
 	
 	this->loadCode2();
 	CYzDlg yzDlg;
@@ -2431,6 +2466,17 @@ void CHuoche::RecvSubmitOrder(std::map<std::string,std::string> respone, char * 
 		Sleep(9000);
 checkcode:
 		std::string randcode=yzDlg.yzcode;
+		std::string user2info="oldPassengers=&checkbox9=Y";
+		if(myName2!="")
+		{
+			user2info="passengerTickets="+seattype+"%2C0%2C1%2C"+myName2+"%2C1%2C"+IdCard2+"%2C"+Phone2
+				+"%2CY&oldPassengers="+myName2+"%2C1%2C"+IdCard2+"&passenger_2_seat="
+				+seattype+"&passenger_2_ticket=1&passenger_2_name="
+				+myName2+"&passenger_2_cardtype=1&passenger_2_cardno="
+				+IdCard2+"&passenger_2_mobileno="+Phone2
+				+"&checkbox9=Y";
+		}
+		
 		
 		string pstr="org.apache.struts.taglib.html.TOKEN="+TOKEN+"&leftTicketStr="+leftTicketStr
 		+"&textfield=%E4%B8%AD%E6%96%87%E6%88%96%E6%8B%BC%E9%9F%B3%E9%A6%96%E5%AD%97%E6%AF%8D&checkbox0=0&orderRequest.train_date="+train_date
@@ -2439,7 +2485,7 @@ checkcode:
 		+"&orderRequest.end_time="+end_time+"&orderRequest.from_station_name="+from_station_name+"&orderRequest.to_station_name="+to_station_name
 		+"&orderRequest.cancel_flag=1&orderRequest.id_mode=Y&passengerTickets="+seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
 		+"%2CY&oldPassengers="+myName+"%2C1%2C"+IdCard+"&passenger_1_seat="+seattype+"&passenger_1_ticket=1&passenger_1_name="+myName+"&passenger_1_cardtype=1&passenger_1_cardno="+IdCard+"&passenger_1_mobileno="+Phone
-		+"&checkbox9=Y&oldPassengers=&checkbox9=Y&oldPassengers=&checkbox9=Y&oldPassengers=&checkbox9=Y&oldPassengers=&checkbox9=Y&randCode="+
+		+"&checkbox9=Y&"+user2info+"&oldPassengers=&checkbox9=Y&oldPassengers=&checkbox9=Y&oldPassengers=&checkbox9=Y&randCode="+
 		randcode+"&orderRequest.reserve_flag=A&tFlag=dc";
 
 		string url="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=checkOrderInfo&rand="+randcode;
@@ -2489,7 +2535,7 @@ void CHuoche::SetCookie(std::string cookies)
 bool CHuoche::loadCode2(void)
 {
 	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init";
-	return this->http->GetFile("https://dynamic.12306.cn/otsweb/passCodeAction.do?rand=randp","c:\\buyticket2.png");
+	return this->http->GetFile("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=passenger&rand=randp","c:\\buyticket2.png");
 }
 
 

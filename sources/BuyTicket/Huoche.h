@@ -19,6 +19,8 @@ private:
 	string toCode;
 	string date;
 
+	bool isTicketEnough(std::string tickstr);
+
 public:
 	CHuoche(CBuyTicketDlg *dlg);
 	~CHuoche(void);
