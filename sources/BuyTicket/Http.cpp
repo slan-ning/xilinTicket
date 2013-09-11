@@ -10,7 +10,7 @@
 CHttp::CHttp()
 {
 	this->m_ioServ=&CIoPool::Instance(4)->io;
-	m_request["User-Agent"]="Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)";
+	m_request["User-Agent"]="Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.1; WOW64; Trident/5.0)";
 	m_request["Accept-Language"]="zh-cn";
 	m_request["Accept"]="*/*";
 	m_request["Connection"]="Keep-Alive";

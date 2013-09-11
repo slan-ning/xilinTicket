@@ -39,4 +39,7 @@ public:
 	afx_msg void OnBnClickedOpenUrl();
 	afx_msg void OnStnClickedPic();
 	afx_msg void OnBnClickedBlog();
+	virtual void OnOK();
+	virtual void OnCancel();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 };

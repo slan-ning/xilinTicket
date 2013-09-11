@@ -267,3 +267,34 @@ void CBuyTicketDlg::OnBnClickedBlog()
 {
 	ShellExecute(NULL, _T("open"), _T("http://www.xiaoqin.in/index.php?a=details&aid=110"),NULL, NULL, SW_SHOWNORMAL);
 }
+
+
+void CBuyTicketDlg::OnOK()
+{
+	// ÆÁ±Î»Ø³µ¹Ø±Õ
+
+	//CDialogEx::OnOK();
+}
+
+
+void CBuyTicketDlg::OnCancel()
+{
+
+	CDialogEx::OnCancel();
+}
+
+
+BOOL CBuyTicketDlg::PreTranslateMessage(MSG* pMsg)
+{
+	if(pMsg->message == WM_KEYDOWN) 
+	{
+		switch(pMsg->wParam) 
+		{
+
+		case VK_ESCAPE: //ESC
+			return TRUE;
+		}
+	}
+
+	return CDialogEx::PreTranslateMessage(pMsg);
+}

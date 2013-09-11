@@ -2137,8 +2137,13 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 
 	this->http->Get("https://dynamic.12306.cn/otsweb/");
 	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/";
-	this->http->Get("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
+	std::string initUrl=this->http->Get("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
+	std::string loginjs=weblib::substr(initUrl,"/otsweb/dynamicJsAction.do","\"");
+	std::string loginjs2=weblib::substr(initUrl,"/otsweb/js/login.js?version=","\"");
+
 	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/loginAction.do?method=init";
+	this->http->Get("https://dynamic.12306.cn/otsweb/js/login.js?version="+loginjs2);
+	this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+loginjs);
 	
 }
 
@@ -2157,7 +2162,9 @@ bool CHuoche::Login(std::string username, std::string password, std::string code
 	std::ofstream file("c:\\登录错误.txt",std::ios::app);
 	this->http->m_request["x-requested-with"]="XMLHttpRequest";
 	std::string num=this->getSuggest();
-	std::string pstr="loginRand="+num+"&refundLogin=N&refundFlag=Y&loginUser.user_name="+this->uname+"&nameErrorFocus=&user.password="+this->upass+"&passwordErrorFocus=&randCode="+this->yzcode+"&randErrorFocus=";
+	std::string pstr="loginRand="+num+"&refundLogin=N&refundFlag=Y&isClick=&form_tk=null&loginUser.user_name="
+		+this->uname+"&nameErrorFocus=&user.password="+this->upass+"&passwordErrorFocus=&randCode="
+		+this->yzcode+"&randErrorFocus=&MzMyNDg%3D=MmY5YzZjY2E4MDBkNWM2Mw%3D%3D&myversion=undefined";
 	
 	this->http->m_request["x-requested-with"]="";
 	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=login",pstr);
@@ -2462,8 +2469,8 @@ void CHuoche::RecvSubmitOrder(std::map<std::string,std::string> respone, char * 
 	CYzDlg yzDlg;
 	yzDlg.huoche=this;//传递本类指针到对话框
 	if(yzDlg.DoModal()){
-		this->showMsg("延时9秒，铁道部在这里设置操作小于9秒会失败!");
-		Sleep(9000);
+		this->showMsg("延时一下，过快会被封！");
+		//Sleep(1000);
 checkcode:
 		std::string randcode=yzDlg.yzcode;
 		std::string user2info="oldPassengers=&checkbox9=Y";
@@ -2493,27 +2500,37 @@ checkcode:
 		string checkstr=this->http->Post(url,pstr);
 		checkstr=weblib::Utf8Decode(checkstr);
 
-		if(checkstr.find("errMsg\":\"Y\"")!=std::string::npos){
+		if(checkstr.find("errMsg\":\"Y\"")!=std::string::npos 
+			&& checkstr.find("msg\":\"\"")!=std::string::npos)
+		{
 			pstr=pstr.substr(0,pstr.find("&tFlag=dc"));
 
 			url="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=getQueueCount&train_date="+train_date+"&train_no="+train_no+"&station="+station_train_code+"&seat="+seattype+"&from="+from_station_telecode+"&to="+to_station_telecode+"&ticket="+leftTicketStr;
 			this->showMsg(weblib::Utf8Decode(this->http->Get(url)));
-			this->showMsg("延时6秒，铁道部在这里设置操作小于6秒会失败!");
-			Sleep(5100);		
+			this->showMsg("延时一下，过快会被封！");
+			Sleep(1000);
 			this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+			Sleep(1000);
 			this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+			Sleep(1000);
 			this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
-		}else if(checkstr.find("验证码")!=std::string::npos)
+		}else if(checkstr.find("请重试")!=std::string::npos){
+			this->showMsg(checkstr);
+			Sleep(1000);
+			goto checkcode;
+		}
+		else if(checkstr.find("验证码")!=std::string::npos)
 		{
 			this->showMsg("验证码错误，请重新输入！");
-			if(yzDlg.DoModal()){
+			int ret=yzDlg.DoModal();
+			if(ret==IDOK){
 				goto checkcode;
-			}else{
+			}else if(ret==IDCANCEL) {
 				this->showMsg("您选择了取消购票！");
 			}
 		}
 		else{
-			this->showMsg("检查订单操作错误:"+weblib::Utf8Decode(checkstr));
+			this->showMsg("检查订单操作错误:"+checkstr);
 		}
 
 
@@ -2545,13 +2562,22 @@ void CHuoche::confrimOrder(std::map<std::string,std::string> respone, char * msg
 	if (msg!=NULL){
 		result=msg;
 		if(result.find("errMsg\":\"Y\"")!=std::string::npos)
-			{
+		{
 				this->m_Success=true;
 				this->showMsg("!!!!!预定成功，速速到12306付款");
 				::Beep(2500,2000);
-			}else{
-				this->showMsg(result);
+		}else if(result.find("请重试")!=std::string::npos)
+		{
+			if(!this->m_Success){
+				Sleep(1000);
+				this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueueOrder",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+				this->showMsg(result+"继续抢!");
 			}
+		}
+		else
+		{
+				this->showMsg(result);
+		}
 	}
 	
 	if(msg==NULL){
