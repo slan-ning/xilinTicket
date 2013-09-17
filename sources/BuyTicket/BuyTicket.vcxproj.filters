@@ -33,22 +33,43 @@
     <ClInclude Include="Resource.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="CIoPool.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="Http.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="HttpClient.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="weblib.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Huoche.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="YzDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\client.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\common.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\cookie.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\file.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\function.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\http.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\iopool.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\reader.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\request.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\respone.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="echttp\url.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -62,19 +83,7 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="CIoPool.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Http.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="HttpClient.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Huoche.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="weblib.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="YzDlg.cpp">

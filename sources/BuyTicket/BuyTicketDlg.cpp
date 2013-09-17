@@ -189,7 +189,7 @@ void CBuyTicketDlg::OnBnClickedButton2()
 	CString time;
 	this->GetDlgItem(IDC_EDIT_TIME)->GetWindowText(time);
 
-	int ntime=atoi(time)*1000;
+	int ntime=atof(time)*1000;
 	huoche->isInBuy=false;
 	this->KillTimer(1);
 	this->SetTimer(1,ntime,NULL);

@@ -1,13 +1,19 @@
 #pragma once
-#include "Http.h"
 #include <map>
+#include <boost/smart_ptr.hpp>
+#include <boost/function.hpp>
+#include <boost/bind.hpp>
 
 using namespace std;
 class CBuyTicketDlg;
+namespace echttp{
+	class http;
+	class respone;
+}
 class CHuoche
 {
 private:
-	CHttp *http;
+	echttp::http *http;
 	string uname;
 	string upass;
 	string yzcode;
@@ -30,15 +36,15 @@ public:
 	bool Login(std::string username, std::string password, std::string code);
 	bool GetCode(void);
 	void SearchTicket(std::string fromStation,std::string toStation,std::string date);
-	void RecvSchPiao(std::map<std::string,std::string> respone, char * msg , int nLen);
+	void RecvSchPiao(boost::shared_ptr<echttp::respone> respone);
 	
 	void showMsg(std::string msg);
 	bool submitOrder(std::string ticketinfo,std::string seat);
-	void RecvSubmitOrder(std::map<std::string,std::string> respone, char * msg , int nLen,std::string seat);
+	void RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone, std::string seat);
 	bool loadCode2(void);
 	bool isInBuy;
 	std::string train;
-	void confrimOrder(std::map<std::string,std::string> respone, char * msg , int nLen,std::string pstr);
+	void confrimOrder(boost::shared_ptr<echttp::respone> respone, std::string pstr);
 	bool m_Success;
 };
 

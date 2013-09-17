@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "weblib.h"
+#include "echttp/http.hpp"
 #include "Huoche.h"
 #include <iostream>
 #include <fstream>
@@ -15,8 +15,9 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 	, m_Success(false)
 {
 	this->dlg=dlg;
-	http=new CHttp();
-	
+	http=new echttp::http();
+
+	http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; qdesk 2.5.1277.202; Windows NT 6.1; WOW64; Trident/6.0)");
 	
 
 	station["北京北"]="VAP";
@@ -2136,12 +2137,14 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 	station["郑州东"]="ZAF";
 
 	this->http->Get("https://dynamic.12306.cn/otsweb/");
-	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/";
-	std::string initUrl=this->http->Get("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
-	std::string loginjs=weblib::substr(initUrl,"/otsweb/dynamicJsAction.do","\"");
-	std::string loginjs2=weblib::substr(initUrl,"/otsweb/js/login.js?version=","\"");
+	this->http->Request.m_header.insert("Referer","https://dynamic.12306.cn/otsweb/");
 
-	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/loginAction.do?method=init";
+
+	std::string initUrl=this->http->Get("https://dynamic.12306.cn/otsweb/loginAction.do?method=init")->as_string();
+	std::string loginjs=echttp::substr(initUrl,"/otsweb/dynamicJsAction.do","\"");
+	std::string loginjs2=echttp::substr(initUrl,"/otsweb/js/login.js?version=","\"");
+
+	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
 	this->http->Get("https://dynamic.12306.cn/otsweb/js/login.js?version="+loginjs2);
 	this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+loginjs);
 	
@@ -2160,19 +2163,18 @@ bool CHuoche::Login(std::string username, std::string password, std::string code
 	this->upass=password;
 	this->yzcode=code;
 	std::ofstream file("c:\\登录错误.txt",std::ios::app);
-	this->http->m_request["x-requested-with"]="XMLHttpRequest";
+	this->http->Request.m_header.insert("x-requested-with","XMLHttpRequest");
 	std::string num=this->getSuggest();
 	std::string pstr="loginRand="+num+"&refundLogin=N&refundFlag=Y&isClick=&form_tk=null&loginUser.user_name="
 		+this->uname+"&nameErrorFocus=&user.password="+this->upass+"&passwordErrorFocus=&randCode="
-		+this->yzcode+"&randErrorFocus=&MzMyNDg%3D=MmY5YzZjY2E4MDBkNWM2Mw%3D%3D&myversion=undefined";
+		+this->yzcode+"&randErrorFocus=&Mjc5NTA3OA%3D%3D=YmRjZmVmNjA3N2UzZDcwMw%3D%3D&myversion=undefined";
 	
-	this->http->m_request["x-requested-with"]="";
-	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=login",pstr);
-	res=weblib::Utf8Decode(res);
+	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=login",pstr)->as_string();
+	res=echttp::Utf8Decode(res);
 
 	if(res.find("我的12306")!=std::string::npos){
 		this->dlg->m_listbox.AddString("登录成功");
-		this->SetCookie(this->http->m_request["Cookie"]);
+		this->SetCookie(this->http->Request.m_cookies.cookie_string());
 		return true;
 	}else{
 		file<<res;
@@ -2186,16 +2188,17 @@ bool CHuoche::Login(std::string username, std::string password, std::string code
 
 bool CHuoche::GetCode(void)
 {
-	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/loginAction.do?method=init";
-	return this->http->GetFile("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=login&rand=sjrand","c:\\buyticket.png");
+	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
+	int status_code=this->http->Get(std::string("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=login&rand=sjrand"),std::string("c:\\buyticket.png"))->status_code;
+	return status_code==200;
 }
 
 
 std::string CHuoche::getSuggest(void)
 {
-	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=loginAysnSuggest","");
+	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=loginAysnSuggest","")->as_string();
 	if(res=="") return "";
-	return weblib::substr(res,"{\"loginRand\":\"","\"");
+	return echttp::substr(res,"{\"loginRand\":\"","\"");
 }
 
 
@@ -2204,9 +2207,10 @@ void CHuoche::SearchTicket(std::string fromStation,std::string toStation,std::st
 	this->fromCode=station[fromStation];
 	this->toCode=station[toStation];
 	this->date=date;
-	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init";
+	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init");
 	std::string	url="https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=queryLeftTicket&orderRequest.train_date="+this->date+"&orderRequest.from_station_telecode="+this->fromCode+"&orderRequest.to_station_telecode="+this->toCode+"&orderRequest.train_no=&trainPassType=QB&trainClass=QB%23D%23Z%23T%23K%23QT%23&includeStudent=00&seatTypeAndNum=&orderRequest.start_time_str=00%3A00--24%3A00";
-	this->http->AsyGet(url,boost::bind(&CHuoche::RecvSchPiao,this,_1,_2,_3));
+	this->http->Get(url,boost::bind(&CHuoche::RecvSchPiao,this,_1));
+	this->http->Post("http://dynamic.12306.cn/otsweb/trainQueryAppAction.do?method=kp","");
 
 }
 
@@ -2234,15 +2238,15 @@ bool CHuoche::isTicketEnough(std::string tickstr)
 
 }
 
-void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg , int nLen)
+void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 {
 	std::string restr;
-	if (msg!=NULL)
-	restr=msg;
+	
+	restr=respone->as_string();
 
 	if(restr!=""&&restr!="-10"){
 		std::ofstream webfile("c:\\web.txt",std::ios::app);
-		webfile<<msg<<"\r\n";
+		webfile<<restr<<"\r\n";
 		webfile.close();
 		std::vector<std::string>  strs;
 
@@ -2257,7 +2261,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 			restr=restr.substr(restr.find("onStopHover"));
 			std::string ticks=restr.substr(0,restr.find("</a>"));
 
-			std::string trainstr=weblib::substr(ticks,"onStopOut()'>","</span>");
+			std::string trainstr=echttp::substr(ticks,"onStopOut()'>","</span>");
 			if(this->train!=""&&this->train.find(trainstr)==std::string::npos)
 			{
 				continue;
@@ -2273,7 +2277,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
-					ticketInfo=weblib::substr(ticks,"javascript:getSelected('","')");
+					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="M";
 					this->showMsg(trainstr+"有一等座");
 					break;
@@ -2287,7 +2291,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
-					ticketInfo=weblib::substr(ticks,"javascript:getSelected('","')");
+					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="O";
 					this->showMsg(trainstr+"有二等座");
 					break;
@@ -2301,7 +2305,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
-					ticketInfo=weblib::substr(ticks,"javascript:getSelected('","')");
+					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="4";
 					this->showMsg(trainstr+"有软卧");
 					break;
@@ -2315,7 +2319,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 			{
 				if(ticks.find("getSelected")!=std::string::npos)
 				{
-					ticketInfo=weblib::substr(ticks,"javascript:getSelected('","')");
+					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="3";
 					this->showMsg(trainstr+"有卧铺");
 					break;
@@ -2331,7 +2335,7 @@ void CHuoche::RecvSchPiao(std::map<std::string,std::string> respone, char * msg 
 				{
 					if(ticks.find("getSelected")!=std::string::npos)
 					{
-						ticketInfo=weblib::substr(ticks,"javascript:getSelected('","')");
+						ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 						seat="1";
 					}else{
 						this->showMsg("未知硬座信息");
@@ -2383,19 +2387,19 @@ bool CHuoche::submitOrder(std::string ticketinfo,std::string seat)
 	this->isInBuy=true;
 
 	std::vector<std::string>  strs;
-	strs=weblib::explode(ticketinfo,"#");
+	strs=echttp::explode(ticketinfo,"#");
 
 	if(strs.size()>0){
 		std::string station_train_code=strs.at(0);
 		std::string train_date=this->date;
-		string lishi=weblib::UrlEncode(strs.at(1));
-		string train_start_time=weblib::UrlEncode(strs.at(2));
+		string lishi=echttp::UrlEncode(strs.at(1));
+		string train_start_time=echttp::UrlEncode(strs.at(2));
 		string trainno4=strs.at(3);
 		string from_station_telecode=strs.at(4);
 		string to_station_telecode=strs.at(5);
-		string arrive_time=weblib::UrlEncode(strs.at(6));
-		string from_station_name=weblib::UrlEncode(weblib::Utf8Encode(strs.at(7)));
-		string to_station_name=weblib::UrlEncode(weblib::Utf8Encode(strs.at(8)));
+		string arrive_time=echttp::UrlEncode(strs.at(6));
+		string from_station_name=echttp::UrlEncode(echttp::Utf8Encode(strs.at(7)));
+		string to_station_name=echttp::UrlEncode(echttp::Utf8Encode(strs.at(8)));
 		string from_station_no=strs.at(9);
 		string to_station_no=strs.at(10);
 		string ypInfoDetail=strs.at(11);
@@ -2407,15 +2411,16 @@ bool CHuoche::submitOrder(std::string ticketinfo,std::string seat)
 			from_station_name+"&to_station_telecode_name="+to_station_name+"&round_train_date=2013-05-03&round_start_time_str=00%3A00--24%3A00&single_round_type=1&train_pass_type=QB&train_class_arr=QB%23D%23Z%23T%23K%23QT%23&start_time_str=00%3A00--24%3A00&lishi="+
 			lishi+"&train_start_time="+train_start_time+"&trainno4="+trainno4+"&arrive_time="+arrive_time+"&from_station_name="+
 			from_station_name+"&to_station_name="+to_station_name+"&from_station_no="+from_station_no+"&to_station_no="+to_station_no+"&ypInfoDetail="+
-			ypInfoDetail+"&mmStr="+mmStr+"&locationCode="+locationCode;
+			ypInfoDetail+"&mmStr="+mmStr+"&locationCode="+locationCode+"&Mjc5NTA3OA%3D%3D=YmRjZmVmNjA3N2UzZDcwMw%3D%3D&myversion=undefined";
 
-		std::string recvStr=this->http->Post("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=submutOrderRequest",pstr);
-		if(this->http->m_respone["responeCode"]=="302")
+		boost::shared_ptr<echttp::respone> ret=this->http->Post("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=submutOrderRequest",pstr);
+		std::string recvStr=ret->as_string();
+		if(ret->status_code==302)
 		{
-			string location=this->http->m_respone["Location"];
-			this->http->AsyGet(location,boost::bind(&CHuoche::RecvSubmitOrder,this,_1,_2,_3,seat));
+			string location=ret->header.find("Location");
+			this->http->Get(location,boost::bind(&CHuoche::RecvSubmitOrder,this,_1,seat));
 		}else{
-			this->showMsg("预定错误!"+weblib::Utf8Decode(recvStr));
+			this->showMsg("预定错误!"+echttp::Utf8Decode(recvStr));
 		}
 		
 	}
@@ -2423,25 +2428,24 @@ bool CHuoche::submitOrder(std::string ticketinfo,std::string seat)
 	return false;
 }
 
-void CHuoche::RecvSubmitOrder(std::map<std::string,std::string> respone, char * msg , int nLen,std::string seat)
+void CHuoche::RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,std::string seat)
 {
 	std::string restr;
-	if (msg!=NULL)
-	restr=msg;
+	restr=respone->as_string();
 
-	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init";
+	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init");
 
-	string TOKEN=weblib::substr(restr,"name=\"org.apache.struts.taglib.html.TOKEN\" value=\"","\"></div>");
-	string leftTicketStr=weblib::GetFormInputValue(restr,"name=\"leftTicketStr\"");
-	string train_date=weblib::GetFormInputValue(restr,"name=\"orderRequest.train_date\"");
-	string train_no=weblib::GetFormInputValue(restr,"name=\"orderRequest.train_no\"");
-	string station_train_code=weblib::GetFormInputValue(restr,"name=\"orderRequest.station_train_code\"");
-	string from_station_telecode=weblib::GetFormInputValue(restr,"name=\"orderRequest.from_station_telecode\"");
-	string to_station_telecode=weblib::GetFormInputValue(restr,"name=\"orderRequest.to_station_telecode\"");
-	string start_time=weblib::UrlEncode(weblib::Utf8Encode(weblib::GetFormInputValue(restr,"name=\"orderRequest.start_time\"")));
-	string end_time=weblib::UrlEncode(weblib::Utf8Encode(weblib::GetFormInputValue(restr,"name=\"orderRequest.end_time\"")));
-	string from_station_name=weblib::UrlEncode(weblib::Utf8Encode(weblib::GetFormInputValue(restr,"name=\"orderRequest.from_station_name\"")));
-	string to_station_name=weblib::UrlEncode(weblib::Utf8Encode(weblib::GetFormInputValue(restr,"name=\"orderRequest.to_station_name\"")));
+	string TOKEN=echttp::substr(restr,"name=\"org.apache.struts.taglib.html.TOKEN\" value=\"","\"></div>");
+	string leftTicketStr=echttp::GetFormInputValue(restr,"name=\"leftTicketStr\"");
+	string train_date=echttp::GetFormInputValue(restr,"name=\"orderRequest.train_date\"");
+	string train_no=echttp::GetFormInputValue(restr,"name=\"orderRequest.train_no\"");
+	string station_train_code=echttp::GetFormInputValue(restr,"name=\"orderRequest.station_train_code\"");
+	string from_station_telecode=echttp::GetFormInputValue(restr,"name=\"orderRequest.from_station_telecode\"");
+	string to_station_telecode=echttp::GetFormInputValue(restr,"name=\"orderRequest.to_station_telecode\"");
+	string start_time=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.start_time\"")));
+	string end_time=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.end_time\"")));
+	string from_station_name=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.from_station_name\"")));
+	string to_station_name=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.to_station_name\"")));
 
 	CString fullname,idcard,phone;
 	CString fullname2,idcard2,phone2;
@@ -2462,8 +2466,8 @@ void CHuoche::RecvSubmitOrder(std::map<std::string,std::string> respone, char * 
 	string Phone2=phone2.GetBuffer();
 
 	string seattype=seat;//座位类型 3为卧铺 1为硬座
-	myName=weblib::UrlEncode(weblib::Utf8Encode(myName));
-	myName2=weblib::UrlEncode(weblib::Utf8Encode(myName2));
+	myName=echttp::UrlEncode(echttp::Utf8Encode(myName));
+	myName2=echttp::UrlEncode(echttp::Utf8Encode(myName2));
 	
 	this->loadCode2();
 	CYzDlg yzDlg;
@@ -2497,8 +2501,8 @@ checkcode:
 
 		string url="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=checkOrderInfo&rand="+randcode;
 
-		string checkstr=this->http->Post(url,pstr);
-		checkstr=weblib::Utf8Decode(checkstr);
+		string checkstr=this->http->Post(url,pstr)->as_string();
+		checkstr=echttp::Utf8Decode(checkstr);
 
 		if(checkstr.find("errMsg\":\"Y\"")!=std::string::npos 
 			&& checkstr.find("msg\":\"\"")!=std::string::npos)
@@ -2506,14 +2510,14 @@ checkcode:
 			pstr=pstr.substr(0,pstr.find("&tFlag=dc"));
 
 			url="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=getQueueCount&train_date="+train_date+"&train_no="+train_no+"&station="+station_train_code+"&seat="+seattype+"&from="+from_station_telecode+"&to="+to_station_telecode+"&ticket="+leftTicketStr;
-			this->showMsg(weblib::Utf8Decode(this->http->Get(url)));
+			this->showMsg(echttp::Utf8Decode(this->http->Get(url)->as_string()));
 			this->showMsg("延时一下，过快会被封！");
 			Sleep(1000);
-			this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
 			Sleep(1000);
-			this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
 			Sleep(1000);
-			this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
 		}else if(checkstr.find("请重试")!=std::string::npos){
 			this->showMsg(checkstr);
 			Sleep(1000);
@@ -2551,16 +2555,16 @@ void CHuoche::SetCookie(std::string cookies)
 
 bool CHuoche::loadCode2(void)
 {
-	this->http->m_request["Referer"]="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init";
-	return this->http->GetFile("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=passenger&rand=randp","c:\\buyticket2.png");
+	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init");
+	return this->http->Get(std::string("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=passenger&rand=randp"),std::string("c:\\buyticket2.png"))->status_code==200;
 }
 
 
-void CHuoche::confrimOrder(std::map<std::string,std::string> respone, char * msg , int nLen,std::string pstr)
+void CHuoche::confrimOrder(boost::shared_ptr<echttp::respone> respone,std::string pstr)
 {
 	std::string result;
-	if (msg!=NULL){
-		result=msg;
+	if (respone->as_string()!=""){
+		result=respone->as_string();
 		if(result.find("errMsg\":\"Y\"")!=std::string::npos)
 		{
 				this->m_Success=true;
@@ -2570,7 +2574,7 @@ void CHuoche::confrimOrder(std::map<std::string,std::string> respone, char * msg
 		{
 			if(!this->m_Success){
 				Sleep(1000);
-				this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueueOrder",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+				this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueueOrder",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
 				this->showMsg(result+"继续抢!");
 			}
 		}
@@ -2578,13 +2582,13 @@ void CHuoche::confrimOrder(std::map<std::string,std::string> respone, char * msg
 		{
 				this->showMsg(result);
 		}
-	}
-	
-	if(msg==NULL){
+	}else{
 		if(!this->m_Success){
-			this->http->AsyPost("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueueOrder",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,_2,_3,pstr));
+			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueueOrder",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
 			this->showMsg("返回空，继续抢!");
 		}
 	}
+	
+
 	return ;
 }
