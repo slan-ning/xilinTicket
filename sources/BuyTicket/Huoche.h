@@ -24,8 +24,11 @@ private:
 	string fromCode;
 	string toCode;
 	string date;
+    string encrypt_str;
 
 	bool isTicketEnough(std::string tickstr);
+    std::string xxtea_encode(std::string data,std::string key);
+    void encrypt_code(std::string src);
 
 public:
 	CHuoche(CBuyTicketDlg *dlg);

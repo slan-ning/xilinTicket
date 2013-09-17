@@ -6,8 +6,39 @@
 #include "BuyTicketDlg.h"
 #include "YzDlg.h"
 #include <WinInet.h>
+#include "xxtea.h"
 
 #pragma comment(lib,"Wininet.lib")
+
+
+std::string CHuoche::xxtea_encode(std::string data_,std::string key_)
+{
+    xxtea_long ret_len=0;
+    boost::shared_array<char> v(new char[data_.size()*2]);//*2 because need enough to storage buf in encode inside.
+    memset(v.get(),0,data_.size()*2);
+    memcpy(v.get(),data_.c_str(),data_.size());
+
+    boost::shared_array<char> k(new char[key_.size()*2]);
+    memset(k.get(),0,key_.size()*2);
+    memcpy(k.get(),key_.c_str(),key_.size());
+
+    unsigned char * ret=xxtea_encrypt((unsigned char *)v.get(),data_.size(),(unsigned char *)k.get(),&ret_len);
+
+    char* buf=new char[ret_len*2+1];
+    memset(buf,0,ret_len+1);
+
+    for( int i = 0; i < ret_len; ++i)
+    {
+        unsigned char c=*(ret+i);
+        sprintf(buf+2*i, "%02x", c);
+    }
+
+    std::string result=echttp::base64Encode((unsigned char*)buf,ret_len*2+1);
+    delete[] buf;
+    free(ret);
+
+    return result;
+}
 
 
 CHuoche::CHuoche(CBuyTicketDlg *dlg)
@@ -2141,12 +2172,21 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 
 
 	std::string initUrl=this->http->Get("https://dynamic.12306.cn/otsweb/loginAction.do?method=init")->as_string();
-	std::string loginjs=echttp::substr(initUrl,"/otsweb/dynamicJsAction.do","\"");
-	std::string loginjs2=echttp::substr(initUrl,"/otsweb/js/login.js?version=","\"");
 
-	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
-	this->http->Get("https://dynamic.12306.cn/otsweb/js/login.js?version="+loginjs2);
-	this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+loginjs);
+    if(initUrl.find("/otsweb/dynamicJsAction.do")!=std::string::npos)
+    {
+        std::string loginjs=echttp::substr(initUrl,"/otsweb/dynamicJsAction.do","\"");
+	    std::string loginjs2=echttp::substr(initUrl,"/otsweb/js/login.js?version=","\"");
+
+	    this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
+	    this->http->Get("https://dynamic.12306.cn/otsweb/js/login.js?version="+loginjs2);
+	    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+loginjs)->as_string();
+        this->encrypt_code(ret);
+    }else
+    {
+        this->dlg->m_listbox.AddString("获取登录信息异常！");
+    }
+	
 	
 }
 
@@ -2156,6 +2196,15 @@ CHuoche::~CHuoche(void)
 	delete http;
 }
 
+//从加密js生成验证信息
+void CHuoche::encrypt_code(std::string src)
+{
+    std::string key=echttp::substr(src,"gc(){var key='","';");
+    std::string code=this->xxtea_encode("1111",key);
+
+    this->encrypt_str="&"+echttp::UrlEncode(key)+"="+echttp::UrlEncode(code);
+
+}
 
 bool CHuoche::Login(std::string username, std::string password, std::string code)
 {
@@ -2167,7 +2216,7 @@ bool CHuoche::Login(std::string username, std::string password, std::string code
 	std::string num=this->getSuggest();
 	std::string pstr="loginRand="+num+"&refundLogin=N&refundFlag=Y&isClick=&form_tk=null&loginUser.user_name="
 		+this->uname+"&nameErrorFocus=&user.password="+this->upass+"&passwordErrorFocus=&randCode="
-		+this->yzcode+"&randErrorFocus=&Mjc5NTA3OA%3D%3D=YmRjZmVmNjA3N2UzZDcwMw%3D%3D&myversion=undefined";
+        +this->yzcode+"&randErrorFocus="+this->encrypt_str+"&myversion=undefined";
 	
 	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=login",pstr)->as_string();
 	res=echttp::Utf8Decode(res);
@@ -2411,7 +2460,7 @@ bool CHuoche::submitOrder(std::string ticketinfo,std::string seat)
 			from_station_name+"&to_station_telecode_name="+to_station_name+"&round_train_date=2013-05-03&round_start_time_str=00%3A00--24%3A00&single_round_type=1&train_pass_type=QB&train_class_arr=QB%23D%23Z%23T%23K%23QT%23&start_time_str=00%3A00--24%3A00&lishi="+
 			lishi+"&train_start_time="+train_start_time+"&trainno4="+trainno4+"&arrive_time="+arrive_time+"&from_station_name="+
 			from_station_name+"&to_station_name="+to_station_name+"&from_station_no="+from_station_no+"&to_station_no="+to_station_no+"&ypInfoDetail="+
-			ypInfoDetail+"&mmStr="+mmStr+"&locationCode="+locationCode+"&Mjc5NTA3OA%3D%3D=YmRjZmVmNjA3N2UzZDcwMw%3D%3D&myversion=undefined";
+            ypInfoDetail+"&mmStr="+mmStr+"&locationCode="+locationCode+this->encrypt_str+"&myversion=undefined";
 
 		boost::shared_ptr<echttp::respone> ret=this->http->Post("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=submutOrderRequest",pstr);
 		std::string recvStr=ret->as_string();
