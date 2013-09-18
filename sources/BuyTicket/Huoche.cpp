@@ -51,7 +51,7 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 	this->dlg=dlg;
 	http=new echttp::http();
 
-	http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; qdesk 2.5.1277.202; Windows NT 6.1; WOW64; Trident/6.0)");
+	http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; qdesk 2.5.1177.202; Windows NT 6.1; WOW64; Trident/6.0)");
 	
 
 	station["北京北"]="VAP";
@@ -2185,7 +2185,15 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 	    this->http->Get("https://dynamic.12306.cn/otsweb/js/login.js?version="+loginjs2);
 	    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+loginjs)->as_string();
         this->encrypt_code(ret);
-		this->http->Post("https://dynamic.12306.cn/otsweb/trainQueryAppAction.do?method=kp","");
+
+		//判断是否有隐藏随机监测url
+		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
+		if(ready_str.find("jq({url :'")!=std::string::npos)
+		{
+			std::string url=echttp::substr(ready_str,"jq({url :'","'");
+			this->http->Post("https://dynamic.12306.cn"+url,"");
+		}
+
     }else
     {
         this->dlg->m_listbox.AddString("获取登录信息异常！");
@@ -2266,7 +2274,15 @@ void CHuoche::SerachTicketPage()
 	    this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init");
 	    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+authJs)->as_string();
         this->encrypt_code(ret);
-		this->http->Post("https://dynamic.12306.cn/otsweb/trainQueryAppAction.do?method=kp","");
+
+		//判断是否有隐藏随机监测url
+		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
+		if(ready_str.find("jq({url :'")!=std::string::npos)
+		{
+			std::string url=echttp::substr(ready_str,"jq({url :'","'");
+			this->http->Post("https://dynamic.12306.cn"+url,"");
+		}
+		
     }else
     {
         this->dlg->m_listbox.AddString("获取查询车票页面异常！");
@@ -2276,6 +2292,12 @@ void CHuoche::SerachTicketPage()
 
 void CHuoche::SearchTicket(std::string fromStation,std::string toStation,std::string date)
 {
+	boost::random::uniform_int_distribution<> dist1(1, 50000);
+    int randcode=dist1(rand_gen);
+	std::string randstr=echttp::convert<std::string>(randcode);
+
+	http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; qdesk 2.6."+randstr+"; Windows NT 6.1; WOW64; Trident/6.0)");
+
 	this->fromCode=station[fromStation];
 	this->toCode=station[toStation];
 	this->date=date;
@@ -2283,14 +2305,13 @@ void CHuoche::SearchTicket(std::string fromStation,std::string toStation,std::st
 	std::string	url="https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=queryLeftTicket&orderRequest.train_date="+this->date+"&orderRequest.from_station_telecode="+this->fromCode+"&orderRequest.to_station_telecode="+this->toCode+"&orderRequest.train_no=&trainPassType=QB&trainClass=QB%23D%23Z%23T%23K%23QT%23&includeStudent=00&seatTypeAndNum=&orderRequest.start_time_str=00%3A00--24%3A00";
 	this->http->Get(url,boost::bind(&CHuoche::RecvSchPiao,this,_1));
 
-	
-
-    boost::random::uniform_int_distribution<> dist(1, 20);
-    int rand=dist(rand_gen);
-	if(rand==10)// percent 1/20 to run keep online operation;
+	//5 percent to flush search page; 
+	boost::random::uniform_int_distribution<> dist(1, 20);
+	if(dist(rand_gen)==20)
 	{
-		this->http->Post("https://dynamic.12306.cn/otsweb/trainQueryAppAction.do?method=kp","");
+		this->SerachTicketPage();
 	}
+
 }
 
 bool CHuoche::isTicketEnough(std::string tickstr)
@@ -2521,7 +2542,13 @@ void CHuoche::RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,std::st
         std::string authJs=echttp::substr(restr,"/otsweb/dynamicJsAction.do","\"");
 	    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+authJs)->as_string();
 
-		this->http->Post("https://dynamic.12306.cn/otsweb/trainQueryAppAction.do?method=kp","");
+		//判断是否有隐藏随机监测url
+		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
+		if(ready_str.find("jq({url :'")!=std::string::npos)
+		{
+			std::string url=echttp::substr(ready_str,"jq({url :'","'");
+			this->http->Post("https://dynamic.12306.cn"+url,"");
+		}
     }
 
 	string TOKEN=echttp::substr(restr,"name=\"org.apache.struts.taglib.html.TOKEN\" value=\"","\"></div>");
