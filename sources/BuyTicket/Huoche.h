@@ -38,6 +38,9 @@ public:
 	
 	bool Login(std::string username, std::string password, std::string code);
 	bool GetCode(void);
+
+	void SerachTicketPage();
+
 	void SearchTicket(std::string fromStation,std::string toStation,std::string date);
 	void RecvSchPiao(boost::shared_ptr<echttp::respone> respone);
 	

@@ -10,6 +10,7 @@ class chunk_reader
 public:
 	chunk_reader()
 	  :m_chunk_end(false)
+	  ,m_chunk_rest(0)
 	{
 
 	}

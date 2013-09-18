@@ -8,6 +8,11 @@
 #include <boost/date_time/c_local_time_adjustor.hpp> 
 #include <boost/locale/encoding.hpp>
 
+#include <openssl/sha.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
 
 namespace echttp{
 
@@ -123,9 +128,33 @@ namespace echttp{
 		return   str;   
 	}  
 
+	std::string base64_encode(const unsigned char *input, int length)
+	{
+		BIO *bmem, *b64;
+		BUF_MEM *bptr;
+
+		b64 = BIO_new(BIO_f_base64());
+		bmem = BIO_new(BIO_s_mem());
+		b64 = BIO_push(b64, bmem);
+		BIO_write(b64, input, length);
+		BIO_flush(b64);
+		BIO_get_mem_ptr(b64, &bptr);
+
+		char *buff = (char *)malloc(bptr->length);
+		memcpy(buff, bptr->data, bptr->length-1);
+		buff[bptr->length-1] = 0;
+
+		BIO_free_all(b64);
+
+		std::string ret(buff);
+		free(buff);
+
+		return ret;
+	}
+
 	std::string base64Encode(const unsigned char * Data,int DataByte)
 	{
-	    const char EncodeTable[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	    const char EncodeTable[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 	    //返回值
 	    std::string strEncode;
 	    unsigned char Tmp[4]={0};

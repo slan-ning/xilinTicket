@@ -191,6 +191,7 @@ void CBuyTicketDlg::OnBnClickedButton2()
 
 	int ntime=atof(time)*1000;
 	huoche->isInBuy=false;
+	huoche->SerachTicketPage();
 	this->KillTimer(1);
 	this->SetTimer(1,ntime,NULL);
 

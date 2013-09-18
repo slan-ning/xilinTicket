@@ -100,6 +100,7 @@ public:
 			std::string cookie_key=result[1];
 			std::string cookie_value=result[2];
 
+			this->remove(cookie_key);
             this->insert(cookie_key,cookie_value);
 
 			it=result[0].second;

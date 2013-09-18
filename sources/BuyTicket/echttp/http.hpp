@@ -147,6 +147,7 @@ namespace echttp
 
 			if(cb!=NULL)
 			{
+				this->Request.m_cookies.parse_header(result->header.header_string());
 				cb(result);
 			}
 
@@ -169,35 +170,6 @@ namespace echttp
         StatusCallBack m_status_callback;
 
 
-		void BuildHeader(boost::shared_ptr<respone> respone,std::string header)
-		{
-			if(header.find("HTTP")!=std::string::npos)
-			{
-				std::string h=header.substr(header.find(" ")+1);
-				h=h.substr(0,h.find(" "));
-				respone->status_code=convert<int,std::string>(h);
-
-				boost::smatch result;
-				std::string regtxt("\\b(\\w+?): (.*?)\r\n");
-				boost::regex rx(regtxt);
-
-				std::string::const_iterator it=header.begin();
-				std::string::const_iterator end=header.end();
-
-				while (regex_search(it,end,result,rx))
-				{
-					std::string key=result[1];
-					std::string value=result[2];
-					//respone->headerMap[key]=value;
-					it=result[0].second;
-				}
-			}else
-			{
-				respone->status_code=-1;
-			}
-		}
-
-
         //类似get方法,delete之类的
         boost::shared_ptr<respone> _get(std::string method,std::string url)
 		{
@@ -215,6 +187,8 @@ namespace echttp
             client client(*m_ioServ,task,respone_);
 
 			boost::shared_ptr<respone> result=client.send();
+
+			this->Request.m_cookies.parse_header(result->header.header_string());
 
 			return result;
 
@@ -238,6 +212,8 @@ namespace echttp
 			client client(*m_ioServ,task,respone_);
 
 			boost::shared_ptr<respone> result=client.send();
+
+			this->Request.m_cookies.parse_header(result->header.header_string());
 
 			return result;
 
@@ -297,6 +273,8 @@ namespace echttp
 
 			boost::shared_ptr<respone> respone=client.send();
 
+			this->Request.m_cookies.parse_header(respone->header.header_string());
+
 			return respone;
 		}
 
@@ -316,6 +294,8 @@ namespace echttp
 
 			boost::shared_ptr<respone> respone=client.send();
 
+			this->Request.m_cookies.parse_header(respone->header.header_string());
+
 			return respone;
 		}
 
@@ -333,6 +313,8 @@ namespace echttp
             client client(*m_ioServ,task,respone_);
 
 			boost::shared_ptr<respone> respone=client.send();
+
+			this->Request.m_cookies.parse_header(respone->header.header_string());
 
 			return respone;
 		}
@@ -352,6 +334,8 @@ namespace echttp
             client client(*m_ioServ,task,respone_);
 
 			boost::shared_ptr<respone> respone=client.send();
+
+			this->Request.m_cookies.parse_header(respone->header.header_string());
 
 			return respone;
 		}
