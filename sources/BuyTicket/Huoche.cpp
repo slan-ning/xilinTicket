@@ -2613,10 +2613,6 @@ checkcode:
 			this->http->Request.m_header.insert("X-Requested-With","XMLHttpRequest");
 
 			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
-			Sleep(1000);
-			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
-			Sleep(1000);
-			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
 		}else if(checkstr.find("ÇëÖØÊÔ")!=std::string::npos){
 			this->showMsg(checkstr);
 			Sleep(1000);
