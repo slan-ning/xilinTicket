@@ -520,11 +520,13 @@ namespace echttp
 
 			if (this->m_respone->header.find("Content-Length")!="")
 			{
-				size_t need_read_size=atoi(this->m_respone->header.find("Content-Length").c_str());
-				size_t read_size=0;
+				size_t total_size=atoi(this->m_respone->header.find("Content-Length").c_str());
+				size_t read_size=0;      
 
-				while (read_size<need_read_size)
+				while (read_size<total_size)
 				{
+                    size_t need_read_size=total_size-read_size;
+
 					size_t read_num=m_buffer_size<need_read_size?m_buffer_size:need_read_size;
 					std::vector<char> buf=reader.syn_read(read_num);
 					m_respone->save_body(buf);

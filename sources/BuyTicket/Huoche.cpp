@@ -96,6 +96,7 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 	station["海口"]="VUQ";
 	station["杭州"]="HZH";
 	station["杭州南"]="XHH";
+    station["杭州东"]="HGH";
 	station["济南"]="JNK";
 	station["济南东"]="JAK";
 	station["济南西"]="JGK";
@@ -2170,20 +2171,20 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 	station["涿州东"]="ZAP";
 	station["郑州东"]="ZAF";
 
-	this->http->Get("https://dynamic.12306.cn/otsweb/");
-	this->http->Request.m_header.insert("Referer","https://dynamic.12306.cn/otsweb/");
+	this->http->Get("https://kyfw.12306.cn/otn/");
+	this->http->Request.m_header.insert("Referer","https://kyfw.12306.cn/otn/");
 
 
-	std::string initUrl=this->http->Get("https://dynamic.12306.cn/otsweb/loginAction.do?method=init")->as_string();
+	std::string initUrl=this->http->Get("https://kyfw.12306.cn/otn/login/init")->as_string();
 
-    if(initUrl.find("/otsweb/dynamicJsAction.do")!=std::string::npos)
+    if(initUrl.find("/otn/dynamicJs/loginJs")!=std::string::npos)
     {
-        std::string loginjs=echttp::substr(initUrl,"/otsweb/dynamicJsAction.do","\"");
-	    std::string loginjs2=echttp::substr(initUrl,"/otsweb/js/login.js?version=","\"");
+        std::string loginjs=echttp::substr(initUrl,"/otn/dynamicJs/loginJs","\"");
+	    std::string loginjs2=echttp::substr(initUrl,"/otn/resources/merged/login_js.js?scriptVersion=","\"");
 
-	    this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
-	    this->http->Get("https://dynamic.12306.cn/otsweb/js/login.js?version="+loginjs2);
-	    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+loginjs)->as_string();
+	    this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/login/init");
+	    this->http->Get("https://kyfw.12306.cn/otn/resources/merged/login_js.js?scriptVersion="+loginjs2);
+	    std::string ret= this->http->Get("https://kyfw.12306.cn/otn/dynamicJs/loginJs"+loginjs)->as_string();
         this->encrypt_code(ret);
 
 		//判断是否有隐藏随机监测url
@@ -2191,7 +2192,7 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 		if(ready_str.find("jq({url :'")!=std::string::npos)
 		{
 			std::string url=echttp::substr(ready_str,"jq({url :'","'");
-			this->http->Post("https://dynamic.12306.cn"+url,"");
+			this->http->Post("https://kyfw.12306.cn"+url,"");
 		}
 
     }else
@@ -2211,10 +2212,14 @@ CHuoche::~CHuoche(void)
 //从加密js生成验证信息
 void CHuoche::encrypt_code(std::string src)
 {
-    std::string key=echttp::substr(src,"gc(){var key='","';");
-    std::string code=this->xxtea_encode("1111",key);
+    if(src.find("gc(){var key='")==std::string::npos){
+        this->encrypt_str="";
+    }else{  
+        std::string key=echttp::substr(src,"gc(){var key='","';");
+        std::string code=this->xxtea_encode("1111",key);
 
-    this->encrypt_str="&"+echttp::UrlEncode(key)+"="+echttp::UrlEncode(code);
+        this->encrypt_str="&"+echttp::UrlEncode(key)+"="+echttp::UrlEncode(code);
+    }
 
 }
 
@@ -2225,17 +2230,17 @@ bool CHuoche::Login(std::string username, std::string password, std::string code
 	this->yzcode=code;
 	std::ofstream file("c:\\登录错误.txt",std::ios::app);
 	this->http->Request.m_header.insert("x-requested-with","XMLHttpRequest");
-	std::string num=this->getSuggest();
-	std::string pstr="loginRand="+num+"&refundLogin=N&refundFlag=Y&isClick=&form_tk=null&loginUser.user_name="
-		+this->uname+"&nameErrorFocus=&user.password="+this->upass+"&passwordErrorFocus=&randCode="
-        +this->yzcode+"&randErrorFocus="+this->encrypt_str+"&myversion=undefined";
+	//std::string num=this->getSuggest();
+    std::string pstr="loginUserDTO.user_name="+this->uname+"&userDTO.password="+this->upass+"&randCode="+this->yzcode;
 	
-	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=login",pstr)->as_string();
+	
+	std::string res=this->http->Post("https://kyfw.12306.cn/otn/login/loginAysnSuggest",pstr)->as_string();
 	res=echttp::Utf8Decode(res);
 
-	if(res.find("我的12306")!=std::string::npos){
+	if(res.find("{\"loginCheck\":\"Y\"}")!=std::string::npos){
 		this->dlg->m_listbox.AddString("登录成功");
 		this->SetCookie(this->http->Request.m_cookies.cookie_string());
+        this->http->Post("https://kyfw.12306.cn/otn/login/init","_json_att=");
 		return true;
 	}else{
 		file<<res;
@@ -2249,8 +2254,8 @@ bool CHuoche::Login(std::string username, std::string password, std::string code
 
 bool CHuoche::GetCode(void)
 {
-	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/loginAction.do?method=init");
-	int status_code=this->http->Get(std::string("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=login&rand=sjrand"),std::string("c:\\buyticket.png"))->status_code;
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/login/init");
+	int status_code=this->http->Get(std::string("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=login&rand=sjrand"),std::string("c:\\buyticket.png"))->status_code;
 	return status_code==200;
 }
 
@@ -2264,15 +2269,15 @@ std::string CHuoche::getSuggest(void)
 
 void CHuoche::SerachTicketPage()
 {
-	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/");
-	std::string sources=this->http->Get("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init")->as_string();
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
+	std::string sources=this->http->Get("https://kyfw.12306.cn/otn/leftTicket/init")->as_string();
 	
-	if(sources.find("/otsweb/dynamicJsAction.do")!=std::string::npos)
+	if(sources.find("/otn/dynamicJs/queryJs")!=std::string::npos)
     {
-        std::string authJs=echttp::substr(sources,"/otsweb/dynamicJsAction.do","\"");
+        std::string authJs=echttp::substr(sources,"/otn/dynamicJs/queryJs","\"");
 
-	    this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init");
-	    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+authJs)->as_string();
+	    this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
+	    std::string ret= this->http->Get("https://kyfw.12306.cn/otn/dynamicJs/queryJs"+authJs)->as_string();
         this->encrypt_code(ret);
 
 		//判断是否有隐藏随机监测url
@@ -2280,7 +2285,7 @@ void CHuoche::SerachTicketPage()
 		if(ready_str.find("jq({url :'")!=std::string::npos)
 		{
 			std::string url=echttp::substr(ready_str,"jq({url :'","'");
-			this->http->Post("https://dynamic.12306.cn"+url,"");
+			this->http->Post("https://kyfw.12306.cn"+url,"");
 		}
 		
     }else
@@ -2296,13 +2301,18 @@ void CHuoche::SearchTicket(std::string fromStation,std::string toStation,std::st
     int randcode=dist1(rand_gen);
 	std::string randstr=echttp::convert<std::string>(randcode);
 
-	http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; qdesk 2.6."+randstr+"; Windows NT 6.1; WOW64; Trident/6.0)");
+	//http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/6.0)");
 
 	this->fromCode=station[fromStation];
 	this->toCode=station[toStation];
 	this->date=date;
-	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init");
-	std::string	url="https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=queryLeftTicket&orderRequest.train_date="+this->date+"&orderRequest.from_station_telecode="+this->fromCode+"&orderRequest.to_station_telecode="+this->toCode+"&orderRequest.train_no=&trainPassType=QB&trainClass=QB%23D%23Z%23T%23K%23QT%23&includeStudent=00&seatTypeAndNum=&orderRequest.start_time_str=00%3A00--24%3A00";
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
+
+    this->http->Request.m_header.insert("x-requested-with","XMLHttpRequest");
+    this->http->Request.m_header.insert("Content-Type","application/x-www-form-urlencoded");
+	std::string url="https://dynamic.12306.cn/otn/leftTicket/query?leftTicketDTO.train_date="+this->date
+                    +"&leftTicketDTO.from_station="+this->fromCode+"&leftTicketDTO.to_station="+this->toCode
+                    +"&purpose_codes=ADULT";
 	this->http->Get(url,boost::bind(&CHuoche::RecvSchPiao,this,_1));
 
 	//5 percent to flush search page; 
@@ -2344,7 +2354,7 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 	
 	restr=echttp::Utf8Decode(respone->as_string());
 
-	if(restr!=""&&restr!="-10"){
+	if(restr!=""&&restr!="-10" &&restr.find("queryLeftNewDTO")!=std::string::npos){
 		std::ofstream webfile("c:\\web.txt",std::ios::app);
 		webfile<<restr<<"\r\n";
 		webfile.close();
@@ -2352,32 +2362,34 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 
 		std::string ticketInfo="";
 		std::string seat="";
+        std::string from_station="";
+        std::string to_station="";
 
-		while(restr.find("<span")!=std::string::npos)
+		while(restr.find("station_train_code")!=std::string::npos)
 		{
-			restr=restr.substr(restr.find("<span")+5);
-			std::vector<std::string>  strs;
+			restr=restr.substr(restr.find("station_train_code")+5);
 
-			restr=restr.substr(restr.find("onStopHover"));
-			std::string ticks=restr.substr(0,restr.find("</a>"));
-
-			std::string trainstr=echttp::substr(ticks,"onStopOut()'>","</span>");
+			std::string trainstr=echttp::substr(restr,"_train_code\":\"","\"");
 			if(this->train!=""&&this->train.find(trainstr)==std::string::npos)
 			{
 				continue;
 			}
 
-			while(ticks.find(",")!=std::string::npos)
+			std::string firstSeat=echttp::substr(restr,"\"zy_num\":\"","\"");
+            std::string secondSeat=echttp::substr(restr,"\"ze_num\":\"","\"");
+            std::string softBed=echttp::substr(restr,"\"rw_num\":\"","\"");
+            std::string hardBed=echttp::substr(restr,"\"yw_num\":\"","\"");
+            std::string hardSeat=echttp::substr(restr,"\"yz_num\":\"","\"");
+
+            from_station=echttp::substr(restr,"\"from_station_name\":\"","\"");
+            to_station=echttp::substr(restr,"\"to_station_name\":\"","\"");
+
+            ticketInfo=echttp::substr(restr,"\"secretStr\":\"","\"");
+
+			if(this->isTicketEnough(firstSeat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YDZ))
 			{
-				std::string tick=ticks.substr(0,ticks.find(","));
-				ticks=ticks.substr(ticks.find(",")+1);
-				strs.push_back(tick);
-			}
-			if(this->isTicketEnough(strs.at(6))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YDZ))
-			{
-				if(ticks.find("getSelected")!=std::string::npos)
+				if(restr.find("secretStr")!=std::string::npos)
 				{
-					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="M";
 					this->showMsg(trainstr+"有一等座");
 					break;
@@ -2387,11 +2399,10 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				
 
 			}
-			else if(this->isTicketEnough(strs.at(7))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
+			else if(this->isTicketEnough(secondSeat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
 			{
-				if(ticks.find("getSelected")!=std::string::npos)
+				if(restr.find("secretStr")!=std::string::npos)
 				{
-					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="O";
 					this->showMsg(trainstr+"有二等座");
 					break;
@@ -2401,11 +2412,10 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				
 
 			}
-			else if(this->isTicketEnough(strs.at(9))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
+			else if(this->isTicketEnough(softBed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
 			{
-				if(ticks.find("getSelected")!=std::string::npos)
+				if(restr.find("secretStr")!=std::string::npos)
 				{
-					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="4";
 					this->showMsg(trainstr+"有软卧");
 					break;
@@ -2415,11 +2425,10 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				
 
 			}
-			else if(this->isTicketEnough(strs.at(10))&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
+			else if(this->isTicketEnough(hardBed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
 			{
-				if(ticks.find("getSelected")!=std::string::npos)
+				if(restr.find("secretStr")!=std::string::npos)
 				{
-					ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 					seat="3";
 					this->showMsg(trainstr+"有卧铺");
 					break;
@@ -2428,14 +2437,13 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				}
 				
 
-			}else if(this->isTicketEnough(strs.at(12)) &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
+			}else if(this->isTicketEnough(hardSeat) &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
 			{
 				this->showMsg(trainstr+"有硬座");
 				if(seat=="")
 				{
-					if(ticks.find("getSelected")!=std::string::npos)
+					if(restr.find("secretStr")!=std::string::npos)
 					{
-						ticketInfo=echttp::substr(ticks,"javascript:getSelected('","')");
 						seat="1";
 						break;
 					}else{
@@ -2448,8 +2456,8 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 		}
 
 		//如果检测到相应的票，就下单
-		if(ticketInfo!=""&&ticketInfo.find("#")!=std::string::npos && seat!=""){
-			this->submitOrder(ticketInfo,seat);
+		if(ticketInfo!="" && seat!=""){
+			this->submitOrder(ticketInfo,seat,from_station,to_station);
 		}else{
 			this->showMsg("没有卧铺或者硬座");
 		}
@@ -2483,43 +2491,20 @@ void CHuoche::showMsg(std::string msg)
 }
 
 
-bool CHuoche::submitOrder(std::string ticketinfo,std::string seat)
+bool CHuoche::submitOrder(std::string ticketinfo,std::string seat,std::string fromStationName,std::string toStationName)
 {
 	this->isInBuy=true;
 
-	std::vector<std::string>  strs;
-	strs=echttp::explode(ticketinfo,"#");
+	std::string pstr="secretStr="+ticketinfo+"&train_date="+this->date+"&back_train_date=2014-01-01&tour_flag=dc&purpose_codes=ADULT"+
+        "&query_from_station_name="+fromStationName+"&query_to_station_name="+toStationName+"&undefined";
 
-	if(strs.size()>0){
-		std::string station_train_code=strs.at(0);
-		std::string train_date=this->date;
-		string lishi=echttp::UrlEncode(strs.at(1));
-		string train_start_time=echttp::UrlEncode(strs.at(2));
-		string trainno4=strs.at(3);
-		string from_station_telecode=strs.at(4);
-		string to_station_telecode=strs.at(5);
-		string arrive_time=echttp::UrlEncode(strs.at(6));
-		string from_station_name=echttp::UrlEncode(echttp::Utf8Encode(strs.at(7)));
-		string to_station_name=echttp::UrlEncode(echttp::Utf8Encode(strs.at(8)));
-		string from_station_no=strs.at(9);
-		string to_station_no=strs.at(10);
-		string ypInfoDetail=strs.at(11);
-		string mmStr=strs.at(12);
-		string locationCode=strs.at(13);
+	if(ticketinfo.size()>0){
 
-		string pstr="station_train_code="+station_train_code+"&train_date="+train_date+"&seattype_num=&from_station_telecode="+
-			from_station_telecode+"&to_station_telecode="+to_station_telecode+"&include_student=00&from_station_telecode_name="+
-			from_station_name+"&to_station_telecode_name="+to_station_name+"&round_train_date=2013-05-03&round_start_time_str=00%3A00--24%3A00&single_round_type=1&train_pass_type=QB&train_class_arr=QB%23D%23Z%23T%23K%23QT%23&start_time_str=00%3A00--24%3A00&lishi="+
-			lishi+"&train_start_time="+train_start_time+"&trainno4="+trainno4+"&arrive_time="+arrive_time+"&from_station_name="+
-			from_station_name+"&to_station_name="+to_station_name+"&from_station_no="+from_station_no+"&to_station_no="+to_station_no+"&ypInfoDetail="+
-            ypInfoDetail+"&mmStr="+mmStr+"&locationCode="+locationCode+this->encrypt_str+"&myversion=undefined";
-
-		boost::shared_ptr<echttp::respone> ret=this->http->Post("https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=submutOrderRequest",pstr);
+		boost::shared_ptr<echttp::respone> ret=this->http->Post("https://kyfw.12306.cn/otn/leftTicket/submitOrderRequest",pstr);
 		std::string recvStr=ret->as_string();
-		if(ret->status_code==302)
+        if(recvStr.find("status\":true")!=std::string::npos)
 		{
-			string location=ret->header.find("Location");
-			this->http->Get(location,boost::bind(&CHuoche::RecvSubmitOrder,this,_1,seat));
+			this->http->Post("https://kyfw.12306.cn/otn/confirmPassenger/initDc","_json_att=",boost::bind(&CHuoche::RecvSubmitOrder,this,_1,seat));
 		}else{
 			this->showMsg("预定错误!"+echttp::Utf8Decode(recvStr));
 		}
@@ -2534,35 +2519,28 @@ void CHuoche::RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,std::st
 	std::string restr;
 	restr=echttp::Utf8Decode(respone->as_string());
 
-	this->http->Request.set_defalut_referer("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init");
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/confirmPassenger/initDc");
 
 	
-	if(restr.find("/otsweb/dynamicJsAction.do")!=std::string::npos)
-    {
-        std::string authJs=echttp::substr(restr,"/otsweb/dynamicJsAction.do","\"");
-	    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+authJs)->as_string();
+	//if(restr.find("/otsweb/dynamicJsAction.do")!=std::string::npos)
+ //   {
+ //       std::string authJs=echttp::substr(restr,"/otsweb/dynamicJsAction.do","\"");
+	//    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+authJs)->as_string();
 
-		//判断是否有隐藏随机监测url
-		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
-		if(ready_str.find("jq({url :'")!=std::string::npos)
-		{
-			std::string url=echttp::substr(ready_str,"jq({url :'","'");
-			this->http->Post("https://dynamic.12306.cn"+url,"");
-		}
-    }
+	//	//判断是否有隐藏随机监测url
+	//	std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
+	//	if(ready_str.find("jq({url :'")!=std::string::npos)
+	//	{
+	//		std::string url=echttp::substr(ready_str,"jq({url :'","'");
+	//		this->http->Post("https://dynamic.12306.cn"+url,"");
+	//	}
+ //   }
 
-	string TOKEN=echttp::substr(restr,"name=\"org.apache.struts.taglib.html.TOKEN\" value=\"","\"></div>");
-	string leftTicketStr=echttp::GetFormInputValue(restr,"name=\"leftTicketStr\"");
-	string train_date=echttp::GetFormInputValue(restr,"name=\"orderRequest.train_date\"");
-	string train_no=echttp::GetFormInputValue(restr,"name=\"orderRequest.train_no\"");
-	string station_train_code=echttp::GetFormInputValue(restr,"name=\"orderRequest.station_train_code\"");
-	string from_station_telecode=echttp::GetFormInputValue(restr,"name=\"orderRequest.from_station_telecode\"");
-	string to_station_telecode=echttp::GetFormInputValue(restr,"name=\"orderRequest.to_station_telecode\"");
-	string start_time=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.start_time\"")));
-	string end_time=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.end_time\"")));
-	string from_station_name=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.from_station_name\"")));
-	string to_station_name=echttp::UrlEncode(echttp::Utf8Encode(echttp::GetFormInputValue(restr,"name=\"orderRequest.to_station_name\"")));
-
+	string TOKEN=echttp::substr(restr,"globalRepeatSubmitToken = '","'");
+    string keyCheck=echttp::substr(restr,"'key_check_isChange':'","'");
+	string leftTicketStr=echttp::substr(restr,"leftTicketStr':'","'");
+    string trainLocation=echttp::substr(restr,"train_location':'","'");
+	
 	CString fullname,idcard,phone;
 	CString fullname2,idcard2,phone2;
 	this->dlg->GetDlgItem(IDC_FULLNAME)->GetWindowText(fullname);
@@ -2594,7 +2572,7 @@ void CHuoche::RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,std::st
 		//Sleep(1000);
 checkcode:
 		std::string randcode=yzDlg.yzcode;
-		std::string user2info="oldPassengers=&checkbox9=Y";
+		/*std::string user2info="oldPassengers=&checkbox9=Y";
 		this->http->Get("https://dynamic.12306.cn/otsweb/order/traceAction.do?method=logClickPassenger&passenger_name="+myName+"&passenger_id_no="+IdCard+"&action=checked");
 		if(myName2!="")
 		{
@@ -2608,38 +2586,44 @@ checkcode:
 
 			this->http->Get("https://dynamic.12306.cn/otsweb/order/traceAction.do?method=logClickPassenger&passenger_name="+myName2+"&passenger_id_no="+IdCard2+"&action=checked");
 
-		}
-		
-		
-		string pstr="org.apache.struts.taglib.html.TOKEN="+TOKEN+"&leftTicketStr="+leftTicketStr
-			+"&textfield=%E4%B8%AD%E6%96%87%E6%88%96%E6%8B%BC%E9%9F%B3%E9%A6%96%E5%AD%97%E6%AF%8D&checkbox0=0"+checkbox2+"&orderRequest.train_date="+train_date
-		+"&orderRequest.train_no="+train_no+"&orderRequest.station_train_code="+station_train_code+"&orderRequest.from_station_telecode="+from_station_telecode
-		+"&orderRequest.to_station_telecode="+to_station_telecode+"&orderRequest.seat_type_code=&orderRequest.ticket_type_order_num=&orderRequest.bed_level_order_num=000000000000000000000000000000&orderRequest.start_time="+start_time
-		+"&orderRequest.end_time="+end_time+"&orderRequest.from_station_name="+from_station_name+"&orderRequest.to_station_name="+to_station_name
-		+"&orderRequest.cancel_flag=1&orderRequest.id_mode=Y&passengerTickets="+seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
-		+"%2CY&oldPassengers="+myName+"%2C1%2C"+IdCard+"&passenger_1_seat="+seattype+"&passenger_1_ticket=1&passenger_1_name="+myName+"&passenger_1_cardtype=1&passenger_1_cardno="+IdCard+"&passenger_1_mobileno="+Phone
-		+"&checkbox9=Y&"+user2info+"&oldPassengers=&checkbox9=Y&oldPassengers=&checkbox9=Y&oldPassengers=&checkbox9=Y&randCode="+
-		randcode+"&orderRequest.reserve_flag=A&tFlag=dc";
+		}*/
 
-		string url="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=checkOrderInfo&rand="+randcode;
+
+        std::string pstr="cancel_flag=2&bed_level_order_num=000000000000000000000000000000&passengerTicketStr="
+            +seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
+            +"%2CN&oldPassengerStr="+myName+"%2C1%2C"+IdCard+"%2C1_&tour_flag=dc&randCode="+randcode
+            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
+
+        
+		
+
+		string url="https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo";
 
 		string checkstr=this->http->Post(url,pstr)->as_string();
 		checkstr=echttp::Utf8Decode(checkstr);
 
-		if(checkstr.find("errMsg\":\"Y\"")!=std::string::npos 
-			&& checkstr.find("msg\":\"\"")!=std::string::npos)
+		if(checkstr.find("submitStatus\":true")!=std::string::npos 
+			&& checkstr.find("status\":true")!=std::string::npos)
 		{
-			pstr=pstr.substr(0,pstr.find("&tFlag=dc"));
+			/*pstr="passengerTicketStr="+seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
+            +"%2CN&oldPassengerStr="+myName+"%2C1%2C"+IdCard+"%2C1_&randCode="+randcode+"&purpose_codes=00"+
+            +"&key_check_isChange="+keyCheck+"&leftTicketStr="+leftTicketStr+"&train_location="+trainLocation
+            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
 
-			url="https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=getQueueCount&train_date="+train_date+"&train_no="+train_no+"&station="+station_train_code+"&seat="+seattype+"&from="+from_station_telecode+"&to="+to_station_telecode+"&ticket="+leftTicketStr;
+			url="https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount";
 			this->showMsg(echttp::Utf8Decode(this->http->Get(url)->as_string()));
 			this->showMsg("延时一下，过快会被封！");
-			Sleep(1000);
+			Sleep(1000);*/
 
 			this->http->Request.m_header.insert("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
 			this->http->Request.m_header.insert("X-Requested-With","XMLHttpRequest");
 
-			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
+            pstr="passengerTicketStr="+seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
+            +"%2CN&oldPassengerStr="+myName+"%2C1%2C"+IdCard+"%2C1_&randCode="+randcode+"&purpose_codes=00"+
+            +"&key_check_isChange="+keyCheck+"&leftTicketStr="+leftTicketStr+"&train_location="+trainLocation
+            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
+
+			this->http->Post("https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
 		}else if(checkstr.find("请重试")!=std::string::npos){
 			this->showMsg(checkstr);
 			Sleep(1000);
@@ -2670,15 +2654,15 @@ void CHuoche::SetCookie(std::string cookies)
 	{
 		std::string cookie=cookies.substr(0,cookies.find_first_of(" "));
 		cookie=cookie+"expires=Sun,22-Feb-2099 00:00:00 GMT";
-		::InternetSetCookieA("https://dynamic.12306.cn",NULL,cookie.c_str());
+		::InternetSetCookieA("https://kyfw.12306.cn",NULL,cookie.c_str());
 		cookies=cookies.substr(cookies.find_first_of(" ")+1);
 	}
 }
 
 bool CHuoche::loadCode2(void)
 {
-	this->http->Request.m_header.insert("Referer","https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init");
-	return this->http->Get(std::string("https://dynamic.12306.cn/otsweb/passCodeNewAction.do?module=passenger&rand=randp"),std::string("c:\\buyticket2.png"))->status_code==200;
+	this->http->Request.m_header.insert("Referer","https://kyfw.12306.cn/otn/confirmPassenger/initDc");
+	return this->http->Get(std::string("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=passenger&rand=randp"),std::string("c:\\buyticket2.png"))->status_code==200;
 }
 
 
@@ -2687,7 +2671,7 @@ void CHuoche::confrimOrder(boost::shared_ptr<echttp::respone> respone,std::strin
 	std::string result;
 	if (respone->as_string()!=""){
 		result=echttp::Utf8Decode(respone->as_string());
-		if(result.find("errMsg\":\"Y\"")!=std::string::npos)
+		if(result.find("status\":true")!=std::string::npos)
 		{
 				this->m_Success=true;
 				this->showMsg("!!!!!预定成功，速速到12306付款");

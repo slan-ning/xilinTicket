@@ -45,7 +45,7 @@ public:
 	void RecvSchPiao(boost::shared_ptr<echttp::respone> respone);
 	
 	void showMsg(std::string msg);
-	bool submitOrder(std::string ticketinfo,std::string seat);
+	bool submitOrder(std::string ticketinfo,std::string seat,std::string fromStationName,std::string toStationName);
 	void RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone, std::string seat);
 	bool loadCode2(void);
 	bool isInBuy;

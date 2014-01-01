@@ -113,6 +113,9 @@ namespace echttp{
 
 	std::string substr(const std::string &str,std::string sStart,std::string sEnd)
 	{
+        if(str==""){
+            return "";
+        }
 		std::string midStr=str.substr(str.find(sStart)+sStart.length());
 		midStr=midStr.substr(0,midStr.find(sEnd));
 		return midStr;
