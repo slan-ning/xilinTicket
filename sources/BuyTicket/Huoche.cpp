@@ -50,11 +50,533 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 {
 	this->dlg=dlg;
 	http=new echttp::http();
+    this->LoadStation();
 
 	http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; qdesk 2.5.1177.202; Windows NT 6.1; WOW64; Trident/6.0)");
+	this->LoadDomain();
+
+	this->http->Get("https://"+this->domain+"/otn/");
+	this->http->Request.m_header.insert("Referer","https://kyfw.12306.cn/otn/");
+
+
+	std::string initUrl=this->http->Get("https://"+this->domain+"/otn/login/init")->as_string();
+
+    if(initUrl.find("/otn/dynamicJs/loginJs")!=std::string::npos)
+    {
+        std::string loginjs=echttp::substr(initUrl,"/otn/dynamicJs/loginJs","\"");
+	    std::string loginjs2=echttp::substr(initUrl,"/otn/resources/merged/login_js.js?scriptVersion=","\"");
+
+	    this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/login/init");
+	    this->http->Get("https://"+this->domain+"/otn/resources/merged/login_js.js?scriptVersion="+loginjs2);
+	    std::string ret= this->http->Get("https://"+this->domain+"/otn/dynamicJs/loginJs"+loginjs)->as_string();
+        this->encrypt_code(ret);
+
+		//判断是否有隐藏随机监测url
+		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
+		if(ready_str.find("jq({url :'")!=std::string::npos)
+		{
+			std::string url=echttp::substr(ready_str,"jq({url :'","'");
+			this->http->Post("https://"+this->domain+""+url,"");
+		}
+
+    }else
+    {
+        this->dlg->m_listbox.AddString("获取登录信息异常！");
+    }
+	
+	
+}
+
+
+CHuoche::~CHuoche(void)
+{
+	delete http;
+}
+
+//从加密js生成验证信息
+void CHuoche::encrypt_code(std::string src)
+{
+    if(src.find("gc(){var key='")==std::string::npos){
+        this->encrypt_str="";
+    }else{  
+        std::string key=echttp::substr(src,"gc(){var key='","';");
+        std::string code=this->xxtea_encode("1111",key);
+
+        this->encrypt_str="&"+echttp::UrlEncode(key)+"="+echttp::UrlEncode(code);
+    }
+
+}
+
+bool CHuoche::Login(std::string username, std::string password, std::string code)
+{
+	this->uname=username;
+	this->upass=password;
+	this->yzcode=code;
+	std::ofstream file("c:\\登录错误.txt",std::ios::app);
+	this->http->Request.m_header.insert("x-requested-with","XMLHttpRequest");
+	//std::string num=this->getSuggest();
+    std::string pstr="loginUserDTO.user_name="+this->uname+"&userDTO.password="+this->upass+"&randCode="+this->yzcode;
+	
+	
+	std::string res=this->http->Post("https://"+this->domain+"/otn/login/loginAysnSuggest",pstr)->as_string();
+	res=echttp::Utf8Decode(res);
+
+	if(res.find("{\"loginCheck\":\"Y\"}")!=std::string::npos){
+		this->dlg->m_listbox.AddString("登录成功");
+		this->SetCookie(this->http->Request.m_cookies.cookie_string());
+        this->http->Post("https://"+this->domain+"/otn/login/init","_json_att=");
+		return true;
+    }else if(res.find("验证码不正确")!=std::string::npos){
+        this->dlg->m_listbox.AddString("验证码不正确");
+		return false;
+    }else{
+		file<<res;
+		file.close();
+		this->showMsg("登录失败："+echttp::substr(res,"messages\":[\"","]"));
+		return false;
+	}
+	
+}
+
+
+bool CHuoche::GetCode(void)
+{
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/login/init");
+	int status_code=this->http->Get(std::string("https://"+this->domain+"/otn/passcodeNew/getPassCodeNew?module=login&rand=sjrand"),std::string("c:\\buyticket.png"))->status_code;
+	return status_code==200;
+}
+
+
+std::string CHuoche::getSuggest(void)
+{
+	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=loginAysnSuggest","")->as_string();
+	if(res=="") return "";
+	return echttp::substr(res,"{\"loginRand\":\"","\"");
+}
+
+void CHuoche::SerachTicketPage()
+{
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
+	std::string sources=this->http->Get("https://"+this->domain+"/otn/leftTicket/init")->as_string();
+	
+	if(sources.find("/otn/dynamicJs/queryJs")!=std::string::npos)
+    {
+        std::string authJs=echttp::substr(sources,"/otn/dynamicJs/queryJs","\"");
+
+	    this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
+	    std::string ret= this->http->Get("https://"+this->domain+"/otn/dynamicJs/queryJs"+authJs)->as_string();
+        this->encrypt_code(ret);
+
+		//判断是否有隐藏随机监测url
+		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
+		if(ready_str.find("jq({url :'")!=std::string::npos)
+		{
+			std::string url=echttp::substr(ready_str,"jq({url :'","'");
+			this->http->Post("https://"+this->domain+""+url,"");
+		}
+		
+    }else
+    {
+        this->dlg->m_listbox.AddString("获取查询车票页面异常！");
+    }
+	
+}
+
+void CHuoche::SearchTicket(std::string fromStation,std::string toStation,std::string date)
+{
+	boost::random::uniform_int_distribution<> dist1(1, 50000);
+    int randcode=dist1(rand_gen);
+	std::string randstr=echttp::convert<std::string>(randcode);
+    this->LoadDomain();
+
+	//http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/6.0)");
+
+	this->fromCode=station[fromStation];
+	this->toCode=station[toStation];
+	this->date=date;
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
+
+    this->http->Request.m_header.insert("x-requested-with","XMLHttpRequest");
+    this->http->Request.m_header.insert("Content-Type","application/x-www-form-urlencoded");
+	std::string url="https://"+this->domain+"/otn/leftTicket/query?leftTicketDTO.train_date="+this->date
+                    +"&leftTicketDTO.from_station="+this->fromCode+"&leftTicketDTO.to_station="+this->toCode
+                    +"&purpose_codes=ADULT";
+	this->http->Get(url,boost::bind(&CHuoche::RecvSchPiao,this,_1));
+
+	//5 percent to flush search page; 
+	boost::random::uniform_int_distribution<> dist(1, 20);
+	if(dist(rand_gen)==20)
+	{
+		this->SerachTicketPage();
+	}
+
+}
+
+bool CHuoche::isTicketEnough(std::string tickstr)
+{
+	if(tickstr=="--" || tickstr=="*" || tickstr.find("无")!=std::string::npos)
+		return false;
+
+	if(tickstr.find("有")!=std::string::npos)
+		return true;
+
+	CString fullname2;
+	this->dlg->GetDlgItem(IDC_FULLNAME2)->GetWindowText(fullname2);
+	fullname2.Trim();
+
+	int ticket_num=atoi(tickstr.c_str());
+
+	if(!fullname2.IsEmpty())
+	{
+		return ticket_num>=2;
+	}else
+	{
+		return ticket_num>=1;
+	}
+
+}
+
+void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
+{
+	std::string restr;
+	
+	restr=echttp::Utf8Decode(respone->as_string());
+
+	if(restr!=""&&restr!="-10" &&restr.find("queryLeftNewDTO")!=std::string::npos){
+		std::ofstream webfile("c:\\web.txt",std::ios::app);
+		webfile<<restr<<"\r\n";
+		webfile.close();
+		std::vector<std::string>  strs;
+
+		std::string ticketInfo="";
+		std::string seat="";
+        std::string from_station="";
+        std::string to_station="";
+
+		while(restr.find("station_train_code")!=std::string::npos)
+		{
+			restr=restr.substr(restr.find("station_train_code")+5);
+
+			std::string trainstr=echttp::substr(restr,"_train_code\":\"","\"");
+			if(this->train!=""&&this->train.find(trainstr)==std::string::npos)
+			{
+				continue;
+			}
+
+			std::string firstSeat=echttp::substr(restr,"\"zy_num\":\"","\"");
+            std::string secondSeat=echttp::substr(restr,"\"ze_num\":\"","\"");
+            std::string softBed=echttp::substr(restr,"\"rw_num\":\"","\"");
+            std::string hardBed=echttp::substr(restr,"\"yw_num\":\"","\"");
+            std::string hardSeat=echttp::substr(restr,"\"yz_num\":\"","\"");
+
+            from_station=echttp::substr(restr,"\"from_station_name\":\"","\"");
+            to_station=echttp::substr(restr,"\"to_station_name\":\"","\"");
+
+            ticketInfo=echttp::substr(restr,"\"secretStr\":\"","\"");
+
+			if(this->isTicketEnough(firstSeat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YDZ))
+			{
+				if(restr.find("secretStr")!=std::string::npos)
+				{
+					seat="M";
+					this->showMsg(trainstr+"有一等座");
+					break;
+				}else{
+					this->showMsg("未知一等座余票信息");
+				}
+				
+
+			}
+			else if(this->isTicketEnough(secondSeat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
+			{
+				if(restr.find("secretStr")!=std::string::npos)
+				{
+					seat="O";
+					this->showMsg(trainstr+"有二等座");
+					break;
+				}else{
+					this->showMsg("未知二等座余票信息");
+				}
+				
+
+			}
+			else if(this->isTicketEnough(softBed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
+			{
+				if(restr.find("secretStr")!=std::string::npos)
+				{
+					seat="4";
+					this->showMsg(trainstr+"有软卧");
+					break;
+				}else{
+					this->showMsg("未知软卧余票信息");
+				}
+				
+
+			}
+			else if(this->isTicketEnough(hardBed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
+			{
+				if(restr.find("secretStr")!=std::string::npos)
+				{
+					seat="3";
+					this->showMsg(trainstr+"有卧铺");
+					break;
+				}else{
+					this->showMsg("未知卧铺余票信息");
+				}
+				
+
+			}else if(this->isTicketEnough(hardSeat) &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
+			{
+				this->showMsg(trainstr+"有硬座");
+				if(seat=="")
+				{
+					if(restr.find("secretStr")!=std::string::npos)
+					{
+						seat="1";
+						break;
+					}else{
+						this->showMsg("未知硬座信息");
+					}
+				}
+			}
+
+			
+		}
+
+		//如果检测到相应的票，就下单
+		if(ticketInfo!="" && seat!=""){
+			this->submitOrder(ticketInfo,seat,from_station,to_station);
+		}else{
+			this->showMsg("没有卧铺或者硬座");
+		}
+
+	}else{
+		if(restr=="-10")
+			this->showMsg("会话超时，请重新登录");
+		else
+			this->showMsg("返回为空，请检查查询参数");
+	}
 	
 
-	station["北京北"]="VAP";
+	
+
+}
+
+
+void CHuoche::showMsg(std::string msg)
+{
+
+	CTime tm;
+	tm=CTime::GetCurrentTime();
+	string str=tm.Format("%m月%d日 %X：");
+	str+=msg;
+	dlg->m_listbox.InsertString(0,str.c_str());
+
+	std::ofstream file("c:\\ticketlog.txt",std::ios::app);
+	file<<str<<"\r\n";
+	file.close();
+
+}
+
+
+bool CHuoche::submitOrder(std::string ticketinfo,std::string seat,std::string fromStationName,std::string toStationName)
+{
+	this->isInBuy=true;
+
+	std::string pstr="secretStr="+ticketinfo+"&train_date="+this->date+"&back_train_date=2014-01-01&tour_flag=dc&purpose_codes=ADULT"+
+        "&query_from_station_name="+fromStationName+"&query_to_station_name="+toStationName+"&undefined";
+
+	if(ticketinfo.size()>0){
+
+		boost::shared_ptr<echttp::respone> ret=this->http->Post("https://"+this->domain+"/otn/leftTicket/submitOrderRequest",pstr);
+		std::string recvStr=ret->as_string();
+        if(recvStr.find("status\":true")!=std::string::npos)
+		{
+			this->http->Post("https://"+this->domain+"/otn/confirmPassenger/initDc","_json_att=",boost::bind(&CHuoche::RecvSubmitOrder,this,_1,seat));
+		}else{
+			this->showMsg("预定错误!"+echttp::Utf8Decode(echttp::substr(recvStr,"\"messages\":\[\"","\"")));
+		}
+		
+	}
+	
+	return false;
+}
+
+void CHuoche::RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,std::string seat)
+{
+	std::string restr;
+	restr=echttp::Utf8Decode(respone->as_string());
+
+    this->LoadPassanger();
+
+	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/confirmPassenger/initDc");
+
+	
+	//if(restr.find("/otsweb/dynamicJsAction.do")!=std::string::npos)
+ //   {
+ //       std::string authJs=echttp::substr(restr,"/otsweb/dynamicJsAction.do","\"");
+	//    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+authJs)->as_string();
+
+	//	//判断是否有隐藏随机监测url
+	//	std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
+	//	if(ready_str.find("jq({url :'")!=std::string::npos)
+	//	{
+	//		std::string url=echttp::substr(ready_str,"jq({url :'","'");
+	//		this->http->Post("https://dynamic.12306.cn"+url,"");
+	//	}
+ //   }
+
+	string TOKEN=echttp::substr(restr,"globalRepeatSubmitToken = '","'");
+    string keyCheck=echttp::substr(restr,"'key_check_isChange':'","'");
+	string leftTicketStr=echttp::substr(restr,"leftTicketStr':'","'");
+    string trainLocation=echttp::substr(restr,"train_location':'","'");
+	
+	
+	string checkbox2="";
+
+	string seattype=seat;//座位类型 3为卧铺 1为硬座
+	
+	
+	this->loadCode2();
+	CYzDlg yzDlg;
+	yzDlg.huoche=this;//传递本类指针到对话框
+	if(yzDlg.DoModal()){
+		this->showMsg("延时一下，过快会被封！");
+		//Sleep(1000);
+checkcode:
+		std::string randcode=yzDlg.yzcode;
+		/*std::string user2info="oldPassengers=&checkbox9=Y";
+		this->http->Get("https://dynamic.12306.cn/otsweb/order/traceAction.do?method=logClickPassenger&passenger_name="+myName+"&passenger_id_no="+IdCard+"&action=checked");
+		if(myName2!="")
+		{
+			user2info="passengerTickets="+seattype+"%2C0%2C1%2C"+myName2+"%2C1%2C"+IdCard2+"%2C"+Phone2
+				+"%2CY&oldPassengers="+myName2+"%2C1%2C"+IdCard2+"&passenger_2_seat="
+				+seattype+"&passenger_2_ticket=1&passenger_2_name="
+				+myName2+"&passenger_2_cardtype=1&passenger_2_cardno="
+				+IdCard2+"&passenger_2_mobileno="+Phone2
+				+"&checkbox9=Y";
+			checkbox2="&checkbox1=1";
+
+			this->http->Get("https://dynamic.12306.cn/otsweb/order/traceAction.do?method=logClickPassenger&passenger_name="+myName2+"&passenger_id_no="+IdCard2+"&action=checked");
+
+		}*/
+
+
+        std::string pstr="cancel_flag=2&bed_level_order_num=000000000000000000000000000000&passengerTicketStr="
+            +seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
+            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_&tour_flag=dc&randCode="+randcode
+            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
+
+        
+		
+
+		string url="https://"+this->domain+"/otn/confirmPassenger/checkOrderInfo";
+
+		string checkstr=this->http->Post(url,pstr)->as_string();
+		checkstr=echttp::Utf8Decode(checkstr);
+
+		if(checkstr.find("submitStatus\":true")!=std::string::npos 
+			&& checkstr.find("status\":true")!=std::string::npos)
+		{
+			/*pstr="passengerTicketStr="+seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
+            +"%2CN&oldPassengerStr="+myName+"%2C1%2C"+IdCard+"%2C1_&randCode="+randcode+"&purpose_codes=00"+
+            +"&key_check_isChange="+keyCheck+"&leftTicketStr="+leftTicketStr+"&train_location="+trainLocation
+            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
+
+			url="https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount";
+			this->showMsg(echttp::Utf8Decode(this->http->Get(url)->as_string()));
+			this->showMsg("延时一下，过快会被封！");
+			Sleep(1000);*/
+
+			this->http->Request.m_header.insert("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
+			this->http->Request.m_header.insert("X-Requested-With","XMLHttpRequest");
+
+            pstr="passengerTicketStr="+seattype+"%2C0%2C1%2C"+passanger_name+"%2C1%2C"+passanger_idcard+"%2C"+passanger_phone
+            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_&randCode="+randcode+"&purpose_codes=00"+
+            +"&key_check_isChange="+keyCheck+"&leftTicketStr="+leftTicketStr+"&train_location="+trainLocation
+            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
+
+			this->http->Post("https://"+this->domain+"/otn/confirmPassenger/confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
+		}else if(checkstr.find("请重试")!=std::string::npos){
+			this->showMsg(checkstr);
+			Sleep(1000);
+			goto checkcode;
+		}
+		else if(checkstr.find("验证码")!=std::string::npos)
+		{
+			this->showMsg("验证码错误，请重新输入！");
+			int ret=yzDlg.DoModal();
+			if(ret==IDOK){
+				goto checkcode;
+			}else if(ret==IDCANCEL) {
+				this->showMsg("您选择了取消购票！");
+			}
+		}
+		else{
+            this->showMsg("检查订单操作错误:"+echttp::substr(checkstr,"errMsg","}"));
+		}
+
+
+	}
+
+}
+
+void CHuoche::SetCookie(std::string cookies)
+{
+	while(cookies.find(";")!=std::string::npos)
+	{
+		std::string cookie=cookies.substr(0,cookies.find_first_of(" "));
+		cookie=cookie+"expires=Sun,22-Feb-2099 00:00:00 GMT";
+		::InternetSetCookieA("https://kyfw.12306.cn",NULL,cookie.c_str());
+		cookies=cookies.substr(cookies.find_first_of(" ")+1);
+	}
+}
+
+bool CHuoche::loadCode2(void)
+{
+	this->http->Request.m_header.insert("Referer","https://kyfw.12306.cn/otn/confirmPassenger/initDc");
+	return this->http->Get(std::string("https://"+this->domain+"/otn/passcodeNew/getPassCodeNew?module=passenger&rand=randp"),std::string("c:\\buyticket2.png"))->status_code==200;
+}
+
+
+void CHuoche::confrimOrder(boost::shared_ptr<echttp::respone> respone,std::string pstr)
+{
+	std::string result;
+	if (respone->as_string()!=""){
+		result=echttp::Utf8Decode(respone->as_string());
+		if(result.find("status\":true")!=std::string::npos)
+		{
+				this->m_Success=true;
+				this->showMsg("!!!!!预定成功，速速到12306付款");
+				::Beep(2500,2000);
+		}else if(result.find("请重试")!=std::string::npos)
+		{
+			if(!this->m_Success){
+				Sleep(1000);
+				this->http->Post("https://"+this->domain+"/otn/confirmPassenger/confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
+				this->showMsg(result+"继续抢!");
+			}
+		}
+		else
+		{
+				this->showMsg(result);
+		}
+	}else{
+		if(!this->m_Success){
+			this->http->Post("https://"+this->domain+"/otn/confirmPassenger/confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
+			this->showMsg("返回空，继续抢!");
+		}
+	}
+	
+
+	return ;
+}
+
+
+void CHuoche::LoadStation(void)
+{
+
+    station["北京北"]="VAP";
 	station["北京东"]="BOP";
 	station["北京"]="BJP";
 	station["北京南"]="VNP";
@@ -2170,378 +2692,12 @@ CHuoche::CHuoche(CBuyTicketDlg *dlg)
 	station["卓资东"]="ZDC";
 	station["涿州东"]="ZAP";
 	station["郑州东"]="ZAF";
-
-	this->http->Get("https://kyfw.12306.cn/otn/");
-	this->http->Request.m_header.insert("Referer","https://kyfw.12306.cn/otn/");
-
-
-	std::string initUrl=this->http->Get("https://kyfw.12306.cn/otn/login/init")->as_string();
-
-    if(initUrl.find("/otn/dynamicJs/loginJs")!=std::string::npos)
-    {
-        std::string loginjs=echttp::substr(initUrl,"/otn/dynamicJs/loginJs","\"");
-	    std::string loginjs2=echttp::substr(initUrl,"/otn/resources/merged/login_js.js?scriptVersion=","\"");
-
-	    this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/login/init");
-	    this->http->Get("https://kyfw.12306.cn/otn/resources/merged/login_js.js?scriptVersion="+loginjs2);
-	    std::string ret= this->http->Get("https://kyfw.12306.cn/otn/dynamicJs/loginJs"+loginjs)->as_string();
-        this->encrypt_code(ret);
-
-		//判断是否有隐藏随机监测url
-		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
-		if(ready_str.find("jq({url :'")!=std::string::npos)
-		{
-			std::string url=echttp::substr(ready_str,"jq({url :'","'");
-			this->http->Post("https://kyfw.12306.cn"+url,"");
-		}
-
-    }else
-    {
-        this->dlg->m_listbox.AddString("获取登录信息异常！");
-    }
-	
-	
 }
 
 
-CHuoche::~CHuoche(void)
+void CHuoche::LoadPassanger(void)
 {
-	delete http;
-}
-
-//从加密js生成验证信息
-void CHuoche::encrypt_code(std::string src)
-{
-    if(src.find("gc(){var key='")==std::string::npos){
-        this->encrypt_str="";
-    }else{  
-        std::string key=echttp::substr(src,"gc(){var key='","';");
-        std::string code=this->xxtea_encode("1111",key);
-
-        this->encrypt_str="&"+echttp::UrlEncode(key)+"="+echttp::UrlEncode(code);
-    }
-
-}
-
-bool CHuoche::Login(std::string username, std::string password, std::string code)
-{
-	this->uname=username;
-	this->upass=password;
-	this->yzcode=code;
-	std::ofstream file("c:\\登录错误.txt",std::ios::app);
-	this->http->Request.m_header.insert("x-requested-with","XMLHttpRequest");
-	//std::string num=this->getSuggest();
-    std::string pstr="loginUserDTO.user_name="+this->uname+"&userDTO.password="+this->upass+"&randCode="+this->yzcode;
-	
-	
-	std::string res=this->http->Post("https://kyfw.12306.cn/otn/login/loginAysnSuggest",pstr)->as_string();
-	res=echttp::Utf8Decode(res);
-
-	if(res.find("{\"loginCheck\":\"Y\"}")!=std::string::npos){
-		this->dlg->m_listbox.AddString("登录成功");
-		this->SetCookie(this->http->Request.m_cookies.cookie_string());
-        this->http->Post("https://kyfw.12306.cn/otn/login/init","_json_att=");
-		return true;
-	}else{
-		file<<res;
-		file.close();
-		this->dlg->m_listbox.AddString("登录失败");
-		return false;
-	}
-	
-}
-
-
-bool CHuoche::GetCode(void)
-{
-	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/login/init");
-	int status_code=this->http->Get(std::string("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=login&rand=sjrand"),std::string("c:\\buyticket.png"))->status_code;
-	return status_code==200;
-}
-
-
-std::string CHuoche::getSuggest(void)
-{
-	std::string res=this->http->Post("https://dynamic.12306.cn/otsweb/loginAction.do?method=loginAysnSuggest","")->as_string();
-	if(res=="") return "";
-	return echttp::substr(res,"{\"loginRand\":\"","\"");
-}
-
-void CHuoche::SerachTicketPage()
-{
-	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
-	std::string sources=this->http->Get("https://kyfw.12306.cn/otn/leftTicket/init")->as_string();
-	
-	if(sources.find("/otn/dynamicJs/queryJs")!=std::string::npos)
-    {
-        std::string authJs=echttp::substr(sources,"/otn/dynamicJs/queryJs","\"");
-
-	    this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
-	    std::string ret= this->http->Get("https://kyfw.12306.cn/otn/dynamicJs/queryJs"+authJs)->as_string();
-        this->encrypt_code(ret);
-
-		//判断是否有隐藏随机监测url
-		std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
-		if(ready_str.find("jq({url :'")!=std::string::npos)
-		{
-			std::string url=echttp::substr(ready_str,"jq({url :'","'");
-			this->http->Post("https://kyfw.12306.cn"+url,"");
-		}
-		
-    }else
-    {
-        this->dlg->m_listbox.AddString("获取查询车票页面异常！");
-    }
-	
-}
-
-void CHuoche::SearchTicket(std::string fromStation,std::string toStation,std::string date)
-{
-	boost::random::uniform_int_distribution<> dist1(1, 50000);
-    int randcode=dist1(rand_gen);
-	std::string randstr=echttp::convert<std::string>(randcode);
-
-	//http->Request.set_defalut_userAgent("Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/6.0)");
-
-	this->fromCode=station[fromStation];
-	this->toCode=station[toStation];
-	this->date=date;
-	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/leftTicket/init");
-
-    this->http->Request.m_header.insert("x-requested-with","XMLHttpRequest");
-    this->http->Request.m_header.insert("Content-Type","application/x-www-form-urlencoded");
-	std::string url="https://dynamic.12306.cn/otn/leftTicket/query?leftTicketDTO.train_date="+this->date
-                    +"&leftTicketDTO.from_station="+this->fromCode+"&leftTicketDTO.to_station="+this->toCode
-                    +"&purpose_codes=ADULT";
-	this->http->Get(url,boost::bind(&CHuoche::RecvSchPiao,this,_1));
-
-	//5 percent to flush search page; 
-	boost::random::uniform_int_distribution<> dist(1, 20);
-	if(dist(rand_gen)==20)
-	{
-		this->SerachTicketPage();
-	}
-
-}
-
-bool CHuoche::isTicketEnough(std::string tickstr)
-{
-	if(tickstr=="--" || tickstr=="*" || tickstr.find("无")!=std::string::npos)
-		return false;
-
-	if(tickstr.find("有")!=std::string::npos)
-		return true;
-
-	CString fullname2;
-	this->dlg->GetDlgItem(IDC_FULLNAME2)->GetWindowText(fullname2);
-	fullname2.Trim();
-
-	int ticket_num=atoi(tickstr.c_str());
-
-	if(!fullname2.IsEmpty())
-	{
-		return ticket_num>=2;
-	}else
-	{
-		return ticket_num>=1;
-	}
-
-}
-
-void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
-{
-	std::string restr;
-	
-	restr=echttp::Utf8Decode(respone->as_string());
-
-	if(restr!=""&&restr!="-10" &&restr.find("queryLeftNewDTO")!=std::string::npos){
-		std::ofstream webfile("c:\\web.txt",std::ios::app);
-		webfile<<restr<<"\r\n";
-		webfile.close();
-		std::vector<std::string>  strs;
-
-		std::string ticketInfo="";
-		std::string seat="";
-        std::string from_station="";
-        std::string to_station="";
-
-		while(restr.find("station_train_code")!=std::string::npos)
-		{
-			restr=restr.substr(restr.find("station_train_code")+5);
-
-			std::string trainstr=echttp::substr(restr,"_train_code\":\"","\"");
-			if(this->train!=""&&this->train.find(trainstr)==std::string::npos)
-			{
-				continue;
-			}
-
-			std::string firstSeat=echttp::substr(restr,"\"zy_num\":\"","\"");
-            std::string secondSeat=echttp::substr(restr,"\"ze_num\":\"","\"");
-            std::string softBed=echttp::substr(restr,"\"rw_num\":\"","\"");
-            std::string hardBed=echttp::substr(restr,"\"yw_num\":\"","\"");
-            std::string hardSeat=echttp::substr(restr,"\"yz_num\":\"","\"");
-
-            from_station=echttp::substr(restr,"\"from_station_name\":\"","\"");
-            to_station=echttp::substr(restr,"\"to_station_name\":\"","\"");
-
-            ticketInfo=echttp::substr(restr,"\"secretStr\":\"","\"");
-
-			if(this->isTicketEnough(firstSeat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YDZ))
-			{
-				if(restr.find("secretStr")!=std::string::npos)
-				{
-					seat="M";
-					this->showMsg(trainstr+"有一等座");
-					break;
-				}else{
-					this->showMsg("未知一等座余票信息");
-				}
-				
-
-			}
-			else if(this->isTicketEnough(secondSeat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
-			{
-				if(restr.find("secretStr")!=std::string::npos)
-				{
-					seat="O";
-					this->showMsg(trainstr+"有二等座");
-					break;
-				}else{
-					this->showMsg("未知二等座余票信息");
-				}
-				
-
-			}
-			else if(this->isTicketEnough(softBed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
-			{
-				if(restr.find("secretStr")!=std::string::npos)
-				{
-					seat="4";
-					this->showMsg(trainstr+"有软卧");
-					break;
-				}else{
-					this->showMsg("未知软卧余票信息");
-				}
-				
-
-			}
-			else if(this->isTicketEnough(hardBed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
-			{
-				if(restr.find("secretStr")!=std::string::npos)
-				{
-					seat="3";
-					this->showMsg(trainstr+"有卧铺");
-					break;
-				}else{
-					this->showMsg("未知卧铺余票信息");
-				}
-				
-
-			}else if(this->isTicketEnough(hardSeat) &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
-			{
-				this->showMsg(trainstr+"有硬座");
-				if(seat=="")
-				{
-					if(restr.find("secretStr")!=std::string::npos)
-					{
-						seat="1";
-						break;
-					}else{
-						this->showMsg("未知硬座信息");
-					}
-				}
-			}
-
-			
-		}
-
-		//如果检测到相应的票，就下单
-		if(ticketInfo!="" && seat!=""){
-			this->submitOrder(ticketInfo,seat,from_station,to_station);
-		}else{
-			this->showMsg("没有卧铺或者硬座");
-		}
-
-	}else{
-		if(restr=="-10")
-			this->showMsg("会话超时，请重新登录");
-		else
-			this->showMsg("返回为空，请检查查询参数");
-	}
-	
-
-	
-
-}
-
-
-void CHuoche::showMsg(std::string msg)
-{
-
-	CTime tm;
-	tm=CTime::GetCurrentTime();
-	string str=tm.Format("%m月%d日 %X：");
-	str+=msg;
-	dlg->m_listbox.InsertString(0,str.c_str());
-
-	std::ofstream file("c:\\ticketlog.txt",std::ios::app);
-	file<<str<<"\r\n";
-	file.close();
-
-}
-
-
-bool CHuoche::submitOrder(std::string ticketinfo,std::string seat,std::string fromStationName,std::string toStationName)
-{
-	this->isInBuy=true;
-
-	std::string pstr="secretStr="+ticketinfo+"&train_date="+this->date+"&back_train_date=2014-01-01&tour_flag=dc&purpose_codes=ADULT"+
-        "&query_from_station_name="+fromStationName+"&query_to_station_name="+toStationName+"&undefined";
-
-	if(ticketinfo.size()>0){
-
-		boost::shared_ptr<echttp::respone> ret=this->http->Post("https://kyfw.12306.cn/otn/leftTicket/submitOrderRequest",pstr);
-		std::string recvStr=ret->as_string();
-        if(recvStr.find("status\":true")!=std::string::npos)
-		{
-			this->http->Post("https://kyfw.12306.cn/otn/confirmPassenger/initDc","_json_att=",boost::bind(&CHuoche::RecvSubmitOrder,this,_1,seat));
-		}else{
-			this->showMsg("预定错误!"+echttp::Utf8Decode(recvStr));
-		}
-		
-	}
-	
-	return false;
-}
-
-void CHuoche::RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,std::string seat)
-{
-	std::string restr;
-	restr=echttp::Utf8Decode(respone->as_string());
-
-	this->http->Request.set_defalut_referer("https://kyfw.12306.cn/otn/confirmPassenger/initDc");
-
-	
-	//if(restr.find("/otsweb/dynamicJsAction.do")!=std::string::npos)
- //   {
- //       std::string authJs=echttp::substr(restr,"/otsweb/dynamicJsAction.do","\"");
-	//    std::string ret= this->http->Get("https://dynamic.12306.cn/otsweb/dynamicJsAction.do"+authJs)->as_string();
-
-	//	//判断是否有隐藏随机监测url
-	//	std::string ready_str=echttp::substr(ret,"$(document).ready(function(){","success");
-	//	if(ready_str.find("jq({url :'")!=std::string::npos)
-	//	{
-	//		std::string url=echttp::substr(ready_str,"jq({url :'","'");
-	//		this->http->Post("https://dynamic.12306.cn"+url,"");
-	//	}
- //   }
-
-	string TOKEN=echttp::substr(restr,"globalRepeatSubmitToken = '","'");
-    string keyCheck=echttp::substr(restr,"'key_check_isChange':'","'");
-	string leftTicketStr=echttp::substr(restr,"leftTicketStr':'","'");
-    string trainLocation=echttp::substr(restr,"train_location':'","'");
-	
-	CString fullname,idcard,phone;
+    CString fullname,idcard,phone;
 	CString fullname2,idcard2,phone2;
 	this->dlg->GetDlgItem(IDC_FULLNAME)->GetWindowText(fullname);
 	this->dlg->GetDlgItem(IDC_IDCARD)->GetWindowText(idcard);
@@ -2551,150 +2707,24 @@ void CHuoche::RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,std::st
 	this->dlg->GetDlgItem(IDC_IDCARD2)->GetWindowText(idcard2);
 	this->dlg->GetDlgItem(IDC_PHONE2)->GetWindowText(phone2);
 
-	string myName=fullname.GetBuffer();
-	string IdCard=idcard.GetBuffer();
-	string Phone=phone.GetBuffer();
+    this->passanger_name=fullname.GetBuffer();
+    this->passanger_idcard=idcard.GetBuffer();
+    this->passanger_phone=phone.GetBuffer();
 
-	string myName2=fullname2.GetBuffer();
-	string IdCard2=idcard2.GetBuffer();
-	string Phone2=phone2.GetBuffer();
-	string checkbox2="";
+    this->passanger_name1=fullname2.GetBuffer();
+    this->passanger_idcard1=idcard2.GetBuffer();
+	this->passanger_phone1=phone2.GetBuffer();
 
-	string seattype=seat;//座位类型 3为卧铺 1为硬座
-	myName=echttp::UrlEncode(echttp::Utf8Encode(myName));
-	myName2=echttp::UrlEncode(echttp::Utf8Encode(myName2));
-	
-	this->loadCode2();
-	CYzDlg yzDlg;
-	yzDlg.huoche=this;//传递本类指针到对话框
-	if(yzDlg.DoModal()){
-		this->showMsg("延时一下，过快会被封！");
-		//Sleep(1000);
-checkcode:
-		std::string randcode=yzDlg.yzcode;
-		/*std::string user2info="oldPassengers=&checkbox9=Y";
-		this->http->Get("https://dynamic.12306.cn/otsweb/order/traceAction.do?method=logClickPassenger&passenger_name="+myName+"&passenger_id_no="+IdCard+"&action=checked");
-		if(myName2!="")
-		{
-			user2info="passengerTickets="+seattype+"%2C0%2C1%2C"+myName2+"%2C1%2C"+IdCard2+"%2C"+Phone2
-				+"%2CY&oldPassengers="+myName2+"%2C1%2C"+IdCard2+"&passenger_2_seat="
-				+seattype+"&passenger_2_ticket=1&passenger_2_name="
-				+myName2+"&passenger_2_cardtype=1&passenger_2_cardno="
-				+IdCard2+"&passenger_2_mobileno="+Phone2
-				+"&checkbox9=Y";
-			checkbox2="&checkbox1=1";
-
-			this->http->Get("https://dynamic.12306.cn/otsweb/order/traceAction.do?method=logClickPassenger&passenger_name="+myName2+"&passenger_id_no="+IdCard2+"&action=checked");
-
-		}*/
-
-
-        std::string pstr="cancel_flag=2&bed_level_order_num=000000000000000000000000000000&passengerTicketStr="
-            +seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
-            +"%2CN&oldPassengerStr="+myName+"%2C1%2C"+IdCard+"%2C1_&tour_flag=dc&randCode="+randcode
-            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
-
-        
-		
-
-		string url="https://kyfw.12306.cn/otn/confirmPassenger/checkOrderInfo";
-
-		string checkstr=this->http->Post(url,pstr)->as_string();
-		checkstr=echttp::Utf8Decode(checkstr);
-
-		if(checkstr.find("submitStatus\":true")!=std::string::npos 
-			&& checkstr.find("status\":true")!=std::string::npos)
-		{
-			/*pstr="passengerTicketStr="+seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
-            +"%2CN&oldPassengerStr="+myName+"%2C1%2C"+IdCard+"%2C1_&randCode="+randcode+"&purpose_codes=00"+
-            +"&key_check_isChange="+keyCheck+"&leftTicketStr="+leftTicketStr+"&train_location="+trainLocation
-            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
-
-			url="https://kyfw.12306.cn/otn/confirmPassenger/getQueueCount";
-			this->showMsg(echttp::Utf8Decode(this->http->Get(url)->as_string()));
-			this->showMsg("延时一下，过快会被封！");
-			Sleep(1000);*/
-
-			this->http->Request.m_header.insert("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
-			this->http->Request.m_header.insert("X-Requested-With","XMLHttpRequest");
-
-            pstr="passengerTicketStr="+seattype+"%2C0%2C1%2C"+myName+"%2C1%2C"+IdCard+"%2C"+Phone
-            +"%2CN&oldPassengerStr="+myName+"%2C1%2C"+IdCard+"%2C1_&randCode="+randcode+"&purpose_codes=00"+
-            +"&key_check_isChange="+keyCheck+"&leftTicketStr="+leftTicketStr+"&train_location="+trainLocation
-            +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
-
-			this->http->Post("https://kyfw.12306.cn/otn/confirmPassenger/confirmSingleForQueue",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
-		}else if(checkstr.find("请重试")!=std::string::npos){
-			this->showMsg(checkstr);
-			Sleep(1000);
-			goto checkcode;
-		}
-		else if(checkstr.find("验证码")!=std::string::npos)
-		{
-			this->showMsg("验证码错误，请重新输入！");
-			int ret=yzDlg.DoModal();
-			if(ret==IDOK){
-				goto checkcode;
-			}else if(ret==IDCANCEL) {
-				this->showMsg("您选择了取消购票！");
-			}
-		}
-		else{
-			this->showMsg("检查订单操作错误:"+checkstr);
-		}
-
-
-	}
+    passanger_name=echttp::UrlEncode(echttp::Utf8Encode(passanger_name));
+	passanger_name1=echttp::UrlEncode(echttp::Utf8Encode(passanger_name1));
 
 }
 
-void CHuoche::SetCookie(std::string cookies)
+
+void CHuoche::LoadDomain(void)
 {
-	while(cookies.find(";")!=std::string::npos)
-	{
-		std::string cookie=cookies.substr(0,cookies.find_first_of(" "));
-		cookie=cookie+"expires=Sun,22-Feb-2099 00:00:00 GMT";
-		::InternetSetCookieA("https://kyfw.12306.cn",NULL,cookie.c_str());
-		cookies=cookies.substr(cookies.find_first_of(" ")+1);
-	}
-}
-
-bool CHuoche::loadCode2(void)
-{
-	this->http->Request.m_header.insert("Referer","https://kyfw.12306.cn/otn/confirmPassenger/initDc");
-	return this->http->Get(std::string("https://kyfw.12306.cn/otn/passcodeNew/getPassCodeNew?module=passenger&rand=randp"),std::string("c:\\buyticket2.png"))->status_code==200;
-}
-
-
-void CHuoche::confrimOrder(boost::shared_ptr<echttp::respone> respone,std::string pstr)
-{
-	std::string result;
-	if (respone->as_string()!=""){
-		result=echttp::Utf8Decode(respone->as_string());
-		if(result.find("status\":true")!=std::string::npos)
-		{
-				this->m_Success=true;
-				this->showMsg("!!!!!预定成功，速速到12306付款");
-				::Beep(2500,2000);
-		}else if(result.find("请重试")!=std::string::npos)
-		{
-			if(!this->m_Success){
-				Sleep(1000);
-				this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueueOrder",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
-				this->showMsg(result+"继续抢!");
-			}
-		}
-		else
-		{
-				this->showMsg(result);
-		}
-	}else{
-		if(!this->m_Success){
-			this->http->Post("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=confirmSingleForQueueOrder",pstr,boost::bind(&CHuoche::confrimOrder,this,_1,pstr));
-			this->showMsg("返回空，继续抢!");
-		}
-	}
-	
-
-	return ;
+    CString domain;
+	this->dlg->GetDlgItem(IDC_EDIT_DOMAIN)->GetWindowText(domain);
+    this->domain=domain.GetBuffer();
+    if(this->domain=="") this->domain="kyfw.12306.cn";
 }

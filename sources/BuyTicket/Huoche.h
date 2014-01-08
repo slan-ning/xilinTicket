@@ -21,10 +21,22 @@ private:
 	std::string getSuggest(void);
 	std::map<std::string,std::string> station;
 
+    string domain;
+
+    //车站信息
 	string fromCode;
 	string toCode;
 	string date;
     string encrypt_str;
+
+    //乘客信息
+    string passanger_name;
+    string passanger_idcard;
+    string passanger_phone;
+
+    string passanger_name1;
+    string passanger_idcard1;
+    string passanger_phone1;
 
 	bool isTicketEnough(std::string tickstr);
     std::string xxtea_encode(std::string data,std::string key);
@@ -52,5 +64,8 @@ public:
 	std::string train;
 	void confrimOrder(boost::shared_ptr<echttp::respone> respone, std::string pstr);
 	bool m_Success;
+    void LoadStation(void);
+    void LoadPassanger(void);
+    void LoadDomain(void);
 };
 

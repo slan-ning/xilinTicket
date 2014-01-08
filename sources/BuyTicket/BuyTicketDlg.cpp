@@ -82,7 +82,7 @@ BOOL CBuyTicketDlg::OnInitDialog()
 		std::getline(userfile,id2);
 		std::getline(userfile,phone2);
 		userfile.close();
-
+        this->GetDlgItem(IDC_EDIT_DOMAIN)->SetWindowText("kyfw.12306.cn");
 		this->GetDlgItem(IDC_UNAME)->SetWindowText(uname.c_str());
 		this->GetDlgItem(IDC_UPASS)->SetWindowText(upass.c_str());
 		
@@ -253,7 +253,7 @@ void CBuyTicketDlg::OnTimer(UINT_PTR nIDEvent)
 
 void CBuyTicketDlg::OnBnClickedOpenUrl()
 {
-	ShellExecute(NULL, _T("open"), _T("iexplore"), _T("https://dynamic.12306.cn/otsweb/"), NULL, SW_SHOWNORMAL);
+	ShellExecute(NULL, _T("open"), _T("iexplore"), _T("https://kyfw.12306.cn/otn/index/initMy12306"), NULL, SW_SHOWNORMAL);
 }
 
 

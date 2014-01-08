@@ -115,6 +115,11 @@ public:
 	 */
 	std::string host() const
 	{
+		return "kyfw.12306.cn";
+	}
+
+    std::string ip() const
+	{
 		return host_;
 	}
 

@@ -161,7 +161,7 @@ private:
             task.port=this->proxy_port;
         }else
 		{
-			task.ip=u.host();
+			task.ip=u.ip();
 			task.port=echttp::convert<std::string>(u.port());
 		}
         if(u.protocol()=="https")
