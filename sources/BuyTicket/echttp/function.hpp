@@ -6,6 +6,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp> 
 #include <boost/date_time/local_time_adjustor.hpp> 
 #include <boost/date_time/c_local_time_adjustor.hpp> 
+#include <boost/date_time.hpp>
 #include <boost/locale/encoding.hpp>
 
 #include <openssl/sha.h>
@@ -117,7 +118,11 @@ namespace echttp{
             return "";
         }
 		std::string midStr=str.substr(str.find(sStart)+sStart.length());
-		midStr=midStr.substr(0,midStr.find(sEnd));
+
+        if(midStr.find(sEnd)!=std::string::npos)
+        {
+		    midStr=midStr.substr(0,midStr.find(sEnd));
+        }
 		return midStr;
 	}
 
@@ -207,7 +212,30 @@ namespace echttp{
 	    format_date.imbue(std::locale(format_date.getloc(),tfacet)); 
 	    format_date<<now; 
 	    return format_date.str();  
-	}    
+	} 
+
+    std::string DateFormat(std::string date_str,std::string format_str)
+    {
+        using namespace boost::gregorian;
+        date d;
+        if(date_str.find("-")!=std::string::npos){
+            d=date(from_string(date_str));
+        }else{
+            d=date(from_undelimited_string(date_str));
+        }
+
+        std::locale fmt(std::locale::classic(),new boost::gregorian::date_facet(format_str.c_str()));
+
+        std::ostringstream os;
+        os.imbue(fmt);
+        os<<d;
+        return os.str();
+    }
+
+    std::string Date2UTC(std::string time_str)
+    {
+        return DateFormat(time_str,"%a %b %d 00:00:00 UTC+0800 %Y");
+    }
 
 	std::vector<std::string> explode(std::string strs,std::string delimiter)
 	{

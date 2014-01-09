@@ -23,6 +23,7 @@ protected:
 public:
 	CHuoche* huoche;
 	std::string yzcode;
+    std::string file_path;
 	afx_msg void OnBnClickedButton1();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();

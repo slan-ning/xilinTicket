@@ -126,13 +126,14 @@ namespace echttp
 
 	boost::shared_ptr<respone> client::send()
 	{
-		tcp::resolver::query query(m_task.ip,m_task.port);
+        try{
+		    tcp::resolver::query query(m_task.ip,m_task.port);
 
-		//解析域名。
-		tcp::resolver::iterator endpoint_iterator =resolver_.resolve(query);
-		//保存发送的包体
+		    //解析域名。
+		    tcp::resolver::iterator endpoint_iterator =resolver_.resolve(query);
+		    //保存发送的包体
 
-		try{
+		
 			boost::asio::connect(socket_,endpoint_iterator);
 
 			//如果协议是ssl，就进行认证
@@ -161,11 +162,11 @@ namespace echttp
 			return this->syn_read_body();
 
 		}
-		catch(const boost::system::error_code& ex)
+		catch(const boost::exception& ex)
 		{
 			stop();
-            this->m_respone->error_code=ex.value();
-            this->m_respone->error_msg=ex.message();
+            this->m_respone->error_code=101;
+            this->m_respone->error_msg="connect and send data error";
 			return this->m_respone;
 		}
 

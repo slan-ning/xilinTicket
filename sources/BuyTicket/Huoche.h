@@ -3,9 +3,13 @@
 #include <boost/smart_ptr.hpp>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
+#include <queue>
+
 
 using namespace std;
 class CBuyTicketDlg;
+class Ticket;
+
 namespace echttp{
 	class http;
 	class respone;
@@ -38,6 +42,9 @@ private:
     string passanger_idcard1;
     string passanger_phone1;
 
+    //π∫∆±∂”¡–
+    std::queue<Ticket> *buy_list;
+
 	bool isTicketEnough(std::string tickstr);
     std::string xxtea_encode(std::string data,std::string key);
     void encrypt_code(std::string src);
@@ -52,14 +59,15 @@ public:
 	bool GetCode(void);
 
 	void SerachTicketPage();
+    void RecvSearchTicketPage(boost::shared_ptr<echttp::respone> respone);
 
 	void SearchTicket(std::string fromStation,std::string toStation,std::string date);
 	void RecvSchPiao(boost::shared_ptr<echttp::respone> respone);
 	
 	void showMsg(std::string msg);
-	bool submitOrder(std::string ticketinfo,std::string seat,std::string fromStationName,std::string toStationName);
-	void RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone, std::string seat);
-	bool loadCode2(void);
+	bool submitOrder(Ticket ticket);
+	void RecvSubmitOrder(boost::shared_ptr<echttp::respone> respone,Ticket ticket);
+	std::string loadCode2(void);
 	bool isInBuy;
 	std::string train;
 	void confrimOrder(boost::shared_ptr<echttp::respone> respone, std::string pstr);
@@ -67,5 +75,9 @@ public:
     void LoadStation(void);
     void LoadPassanger(void);
     void LoadDomain(void);
+    void CheckUserOnline(void);
+    void RecvCheckUserOnline(boost::shared_ptr<echttp::respone> respone);
+    void RecvNothing(boost::shared_ptr<echttp::respone> respone);
+    bool CheckQueueCount(Ticket ticket, std::string token);
 };
 

@@ -72,7 +72,7 @@ void CYzDlg::OnPaint()
 
 void CYzDlg::OnStnClickedPic2()
 {
-	huoche->loadCode2();
+    this->file_path=huoche->loadCode2();
 	this->loadImg();
 }
 
@@ -83,11 +83,15 @@ void CYzDlg::loadImg(void)
 	this->GetDlgItem(IDC_PIC2)->GetClientRect(&rect);     //m_picture为Picture Control控件变量，获得控件的区域对象
 
 	CImage image;       //使用图片类
-	image.Load("c:\\buyticket2.png");   //装载路径下图片信息到图片类
-	CDC* pDC = this->GetDlgItem(IDC_PIC2)->GetWindowDC();    //获得显示控件的DC
-	image.Draw( pDC -> m_hDC,rect);      //图片类的图片绘制Draw函数
+	image.Load(this->file_path.c_str());   //装载路径下图片信息到图片类
+    if(!image.IsNull()){
+
+        CDC* pDC = this->GetDlgItem(IDC_PIC2)->GetWindowDC();    //获得显示控件的DC
+	    image.Draw( pDC -> m_hDC,rect);      //图片类的图片绘制Draw函数
 	
-	ReleaseDC(pDC);
+	    ReleaseDC(pDC);
+    }
+	
 }
 
 

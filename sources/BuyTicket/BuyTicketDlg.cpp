@@ -62,6 +62,8 @@ BOOL CBuyTicketDlg::OnInitDialog()
 		this->LoadYzCode();
 	}
 
+    CreateDirectory("c:\\12306",NULL);
+
 	 std::ifstream userfile("c:\\buyticket.dat");
 	 std::string  uname,upass,time,fromStation,toStation,date,name,id,phone,specialTrain;
 	 std::string  name2,id2,phone2;
@@ -173,10 +175,13 @@ bool CBuyTicketDlg::LoadYzCode(void)
 
 	CImage image;       //使用图片类
 	image.Load("c:\\buyticket.png");   //装载路径下图片信息到图片类
-	CDC* pDC = this->GetDlgItem(IDC_PIC)->GetWindowDC();    //获得显示控件的DC
-	image.Draw( pDC -> m_hDC,rect);      //图片类的图片绘制Draw函数
+    if(!image.IsNull()){
+        CDC* pDC = this->GetDlgItem(IDC_PIC)->GetWindowDC();    //获得显示控件的DC
+	    image.Draw( pDC -> m_hDC,rect);      //图片类的图片绘制Draw函数
 	
-	ReleaseDC(pDC);
+	    ReleaseDC(pDC);
+    }
+	
 	return true;
 }
 
