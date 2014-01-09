@@ -460,11 +460,21 @@ checkcode:
 			this->http->Get("https://dynamic.12306.cn/otsweb/order/traceAction.do?method=logClickPassenger&passenger_name="+myName2+"&passenger_id_no="+IdCard2+"&action=checked");
 
 		}*/
+		std::string passanger_info;
+
+		if(passanger_name1=="")
+		{
+			passanger_info=seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
+            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_";		
+		}else{
+			passanger_info=seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
+            +"%2CN_"+seattype+"%2C0%2C1%2C"+this->passanger_name1+"%2C1%2C"+this->passanger_idcard1+"%2C"+this->passanger_phone1
+            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_"+passanger_name1+"%2C1%2C"+passanger_idcard1+"%2C1_";
+		
+		}
 
 
-        std::string pstr="cancel_flag=2&bed_level_order_num=000000000000000000000000000000&passengerTicketStr="
-            +seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
-            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_&tour_flag=dc&randCode="+randcode
+        std::string pstr="cancel_flag=2&bed_level_order_num=000000000000000000000000000000&passengerTicketStr="+passanger_info+"&tour_flag=dc&randCode="+randcode
             +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
 
         
@@ -491,8 +501,7 @@ checkcode:
 			this->http->Request.m_header.insert("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
 			this->http->Request.m_header.insert("X-Requested-With","XMLHttpRequest");
 
-            pstr="passengerTicketStr="+seattype+"%2C0%2C1%2C"+passanger_name+"%2C1%2C"+passanger_idcard+"%2C"+passanger_phone
-            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_&randCode="+randcode+"&purpose_codes=00"+
+            pstr="passengerTicketStr="+passanger_info+"&randCode="+randcode+"&purpose_codes=00"+
             +"&key_check_isChange="+keyCheck+"&leftTicketStr="+leftTicketStr+"&train_location="+trainLocation
             +"&_json_att=&REPEAT_SUBMIT_TOKEN="+TOKEN;
 
