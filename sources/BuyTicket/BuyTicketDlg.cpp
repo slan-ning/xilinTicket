@@ -67,6 +67,7 @@ BOOL CBuyTicketDlg::OnInitDialog()
 	 std::ifstream userfile("c:\\buyticket.dat");
 	 std::string  uname,upass,time,fromStation,toStation,date,name,id,phone,specialTrain;
 	 std::string  name2,id2,phone2;
+	 std::string  name3,id3,phone3;
         if(userfile.is_open())
         {
 		std::getline(userfile,uname);
@@ -83,6 +84,10 @@ BOOL CBuyTicketDlg::OnInitDialog()
 		std::getline(userfile,name2);
 		std::getline(userfile,id2);
 		std::getline(userfile,phone2);
+
+		std::getline(userfile,name3);
+		std::getline(userfile,id3);
+		std::getline(userfile,phone3);
 		userfile.close();
         this->GetDlgItem(IDC_EDIT_DOMAIN)->SetWindowText("kyfw.12306.cn");
 		this->GetDlgItem(IDC_UNAME)->SetWindowText(uname.c_str());
@@ -100,6 +105,10 @@ BOOL CBuyTicketDlg::OnInitDialog()
 		this->GetDlgItem(IDC_FULLNAME2)->SetWindowText(name2.c_str());
 		this->GetDlgItem(IDC_IDCARD2)->SetWindowText(id2.c_str());
 		this->GetDlgItem(IDC_PHONE2)->SetWindowText(phone2.c_str());
+
+		this->GetDlgItem(IDC_FULLNAME3)->SetWindowText(name3.c_str());
+		this->GetDlgItem(IDC_IDCARD3)->SetWindowText(id3.c_str());
+		this->GetDlgItem(IDC_PHONE3)->SetWindowText(phone3.c_str());
 	}
 
 	if(time=="") time="5";
@@ -203,6 +212,7 @@ void CBuyTicketDlg::OnBnClickedButton2()
 	std::ofstream userfile("c:\\buyticket.dat");
 	CString uname,upass,fromStation,toStation,date,name,id,phone,specialTrain;
 	CString name2,id2,phone2;
+	CString name3,id3,phone3;
 	this->GetDlgItem(IDC_UNAME)->GetWindowText(uname);
 	this->GetDlgItem(IDC_UPASS)->GetWindowText(upass);
 	this->GetDlgItem(IDC_FROMCITY)->GetWindowText(fromStation);
@@ -213,9 +223,13 @@ void CBuyTicketDlg::OnBnClickedButton2()
 	this->GetDlgItem(IDC_PHONE)->GetWindowText(phone);
 	this->GetDlgItem(IDC_TRAIN)->GetWindowText(specialTrain);
 
-		this->GetDlgItem(IDC_FULLNAME2)->GetWindowText(name2);
+	this->GetDlgItem(IDC_FULLNAME2)->GetWindowText(name2);
 	this->GetDlgItem(IDC_IDCARD2)->GetWindowText(id2);
 	this->GetDlgItem(IDC_PHONE2)->GetWindowText(phone2);
+
+	this->GetDlgItem(IDC_FULLNAME3)->GetWindowText(name3);
+	this->GetDlgItem(IDC_IDCARD3)->GetWindowText(id3);
+	this->GetDlgItem(IDC_PHONE3)->GetWindowText(phone3);
 
 	userfile<<uname.GetBuffer()<<"\n";
 	userfile<<upass.GetBuffer()<<"\n";
@@ -231,6 +245,10 @@ void CBuyTicketDlg::OnBnClickedButton2()
 	userfile<<name2.GetBuffer()<<"\n";
 	userfile<<id2.GetBuffer()<<"\n";
 	userfile<<phone2.GetBuffer()<<"\n";
+
+	userfile<<name3.GetBuffer()<<"\n";
+	userfile<<id3.GetBuffer()<<"\n";
+	userfile<<phone3.GetBuffer()<<"\n";
 
         userfile.close();
 	

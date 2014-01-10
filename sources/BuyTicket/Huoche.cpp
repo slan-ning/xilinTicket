@@ -233,9 +233,17 @@ bool CHuoche::isTicketEnough(std::string tickstr)
 	this->dlg->GetDlgItem(IDC_FULLNAME2)->GetWindowText(fullname2);
 	fullname2.Trim();
 
+	CString fullname3;
+	this->dlg->GetDlgItem(IDC_FULLNAME2)->GetWindowText(fullname3);
+	fullname3.Trim();
+
 	int ticket_num=atoi(tickstr.c_str());
 
-	if(!fullname2.IsEmpty())
+	if(!fullname3.IsEmpty())
+	{
+		return ticket_num>=3;
+	}
+	else if(!fullname2.IsEmpty())
 	{
 		return ticket_num>=2;
 	}else
@@ -479,15 +487,22 @@ checkcode:
 		}*/
 		std::string passanger_info;
 
-		if(passanger_name1=="")
+		if(passanger_name2!="")
 		{
 			passanger_info=seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
-            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_";		
-		}else{
+            +"%2CN_"+seattype+"%2C0%2C1%2C"+this->passanger_name1+"%2C1%2C"+this->passanger_idcard1+"%2C"+this->passanger_phone1
+            +"%2CN_"+seattype+"%2C0%2C1%2C"+this->passanger_name2+"%2C1%2C"+this->passanger_idcard2+"%2C"+this->passanger_phone2
+            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_"+passanger_name1+"%2C1%2C"+passanger_idcard1+"%2C1_"+passanger_name2+"%2C1%2C"+passanger_idcard2+"%2C1_";
+		}
+		else if(passanger_name1=="")
+		{
 			passanger_info=seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
             +"%2CN_"+seattype+"%2C0%2C1%2C"+this->passanger_name1+"%2C1%2C"+this->passanger_idcard1+"%2C"+this->passanger_phone1
             +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_"+passanger_name1+"%2C1%2C"+passanger_idcard1+"%2C1_";
-		
+					
+		}else{
+			passanger_info=seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
+            +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_";
 		}
 
         std::string pstr="cancel_flag=2&bed_level_order_num=000000000000000000000000000000&passengerTicketStr="+passanger_info+"&tour_flag=dc&randCode="+randcode
@@ -2730,6 +2745,7 @@ void CHuoche::LoadPassanger(void)
 {
     CString fullname,idcard,phone;
 	CString fullname2,idcard2,phone2;
+	CString fullname3,idcard3,phone3;
 	this->dlg->GetDlgItem(IDC_FULLNAME)->GetWindowText(fullname);
 	this->dlg->GetDlgItem(IDC_IDCARD)->GetWindowText(idcard);
 	this->dlg->GetDlgItem(IDC_PHONE)->GetWindowText(phone);
@@ -2737,6 +2753,10 @@ void CHuoche::LoadPassanger(void)
 	this->dlg->GetDlgItem(IDC_FULLNAME2)->GetWindowText(fullname2);
 	this->dlg->GetDlgItem(IDC_IDCARD2)->GetWindowText(idcard2);
 	this->dlg->GetDlgItem(IDC_PHONE2)->GetWindowText(phone2);
+
+	this->dlg->GetDlgItem(IDC_FULLNAME3)->GetWindowText(fullname3);
+	this->dlg->GetDlgItem(IDC_IDCARD3)->GetWindowText(idcard3);
+	this->dlg->GetDlgItem(IDC_PHONE3)->GetWindowText(phone3);
 
     this->passanger_name=fullname.GetBuffer();
     this->passanger_idcard=idcard.GetBuffer();
@@ -2746,8 +2766,13 @@ void CHuoche::LoadPassanger(void)
     this->passanger_idcard1=idcard2.GetBuffer();
 	this->passanger_phone1=phone2.GetBuffer();
 
+	this->passanger_name2=fullname3.GetBuffer();
+    this->passanger_idcard2=idcard3.GetBuffer();
+	this->passanger_phone2=phone3.GetBuffer();
+
     passanger_name=echttp::UrlEncode(echttp::Utf8Encode(passanger_name));
 	passanger_name1=echttp::UrlEncode(echttp::Utf8Encode(passanger_name1));
+	passanger_name2=echttp::UrlEncode(echttp::Utf8Encode(passanger_name2));
 
 }
 

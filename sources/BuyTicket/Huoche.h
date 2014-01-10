@@ -42,6 +42,10 @@ private:
     string passanger_idcard1;
     string passanger_phone1;
 
+	string passanger_name2;
+    string passanger_idcard2;
+    string passanger_phone2;
+
     //¹ºÆ±¶ÓÁĞ
     std::queue<Ticket> *buy_list;
 
