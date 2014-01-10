@@ -283,7 +283,8 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				
 
 			}
-            else if(this->isTicketEnough(ticket.second_seat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
+            
+			if(this->isTicketEnough(ticket.second_seat)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_EDZ))
 			{
 				if(restr.find("secretStr")!=std::string::npos)
 				{
@@ -296,7 +297,8 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				
 
 			}
-			else if(this->isTicketEnough(ticket.soft_bed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
+			
+			if(this->isTicketEnough(ticket.soft_bed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_RW))
 			{
 				if(restr.find("secretStr")!=std::string::npos)
 				{
@@ -309,7 +311,8 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				
 
 			}
-            else if(this->isTicketEnough(ticket.hard_bed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
+            
+			if(this->isTicketEnough(ticket.hard_bed)&&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YW))
 			{
 				if(restr.find("secretStr")!=std::string::npos)
 				{
@@ -321,7 +324,9 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 				}
 				
 
-            }else if(this->isTicketEnough(ticket.hard_seat) &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
+            }
+			
+			if(this->isTicketEnough(ticket.hard_seat) &&BST_CHECKED==this->dlg->IsDlgButtonChecked(IDC_CHECK_YZ))
 			{
                 this->showMsg(trainstr+"有硬座"+"---车票数目:"+ticket.hard_seat);
 				
@@ -339,7 +344,7 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
 
 		//如果检测到相应的票，就下单
         int queue_size=buy_list->size();
-		if(queue_size>0){
+		if(queue_size>0 && !buy_list->empty()){
 
             Ticket task_ticket=buy_list->front();
             this->submitOrder(task_ticket);
@@ -354,10 +359,12 @@ void CHuoche::RecvSchPiao(boost::shared_ptr<echttp::respone> respone)
                 }
 
                 queue_size=buy_list->size();
-
-                Ticket task_ticket=buy_list->front();
-                this->submitOrder(task_ticket);
-                this->showMsg("开始购买:"+task_ticket.station_train_code);
+				if(!buy_list->empty())
+				{
+					Ticket task_ticket=buy_list->front();
+					this->submitOrder(task_ticket);
+					this->showMsg("开始购买:"+task_ticket.station_train_code);
+				}
             }
 		}else{
 			this->showMsg("没有卧铺或者硬座");
@@ -571,6 +578,7 @@ void CHuoche::confrimOrder(boost::shared_ptr<echttp::respone> respone,std::strin
 		{
 				this->m_Success=true;
 				this->showMsg("!!!!!预定成功，速速到12306付款");
+				this->buy_list->pop();
 		}else if(result.find("请重试")!=std::string::npos)
 		{
 			if(!this->m_Success){
@@ -582,6 +590,7 @@ void CHuoche::confrimOrder(boost::shared_ptr<echttp::respone> respone,std::strin
 		else
 		{
 				this->showMsg(result);
+				this->buy_list->pop();
 		}
 	}else{
 		if(!this->m_Success){
