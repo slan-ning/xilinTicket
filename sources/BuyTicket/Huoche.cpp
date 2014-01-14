@@ -494,7 +494,7 @@ checkcode:
             +"%2CN_"+seattype+"%2C0%2C1%2C"+this->passanger_name2+"%2C1%2C"+this->passanger_idcard2+"%2C"+this->passanger_phone2
             +"%2CN&oldPassengerStr="+passanger_name+"%2C1%2C"+passanger_idcard+"%2C1_"+passanger_name1+"%2C1%2C"+passanger_idcard1+"%2C1_"+passanger_name2+"%2C1%2C"+passanger_idcard2+"%2C1_";
 		}
-		else if(passanger_name1=="")
+		else if(passanger_name1!="")
 		{
 			passanger_info=seattype+"%2C0%2C1%2C"+this->passanger_name+"%2C1%2C"+this->passanger_idcard+"%2C"+this->passanger_phone
             +"%2CN_"+seattype+"%2C0%2C1%2C"+this->passanger_name1+"%2C1%2C"+this->passanger_idcard1+"%2C"+this->passanger_phone1
