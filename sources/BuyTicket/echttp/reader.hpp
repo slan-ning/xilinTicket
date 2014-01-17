@@ -1,3 +1,5 @@
+#pragma once
+
 #include "common.hpp"
 #include "boost/asio.hpp"
 
@@ -17,15 +19,15 @@ private:
 
 	size_t buffer_size;
 
-	std::vector<char> syn_read_chunk_data(size_t len)
+	vector<char> syn_read_chunk_data(size_t len)
 	{
 		size_t tmp_size=chunk_remain_size<=len ? chunk_remain_size :len;
 		chunk_remain_size-=tmp_size;
 
-		std::vector<char> content=this->syn_read(tmp_size);
+		vector<char> content=syn_read(tmp_size);
 		if(chunk_remain_size==0)
 		{
-			return std::vector<char>(content.begin(),content.end()-2);
+			return vector<char>(content.begin(),content.end()-2);
 		}else
 		{
 			return content;
@@ -42,26 +44,26 @@ public:
 		buffer_size(buf_size),
 		chunk_remain_size(0)
 	{
-		this->m_sock=sock;
+		m_sock=sock;
 	}
 
 	~reader()
 	{}
 
 
-	std::string syn_read_header()
+	string syn_read_header()
 	{	
 		size_t header_size=boost::asio::read_until(*m_sock,respone_,"\r\n\r\n");
 				
 		boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		std::string header(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+header_size);
+		string header(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+header_size);
 
 		respone_.consume(header_size);
 
 		return header;
 	}
 
-	std::vector<char> syn_read(size_t len)
+	vector<char> syn_read(size_t len)
 	{
 		size_t alreadly_size=respone_.size();
 
@@ -71,17 +73,17 @@ public:
 		}
 
 		boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-		std::vector<char> content(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+len);
+		vector<char> content(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+len);
 		respone_.consume(len);
 
 		return content;
 	}
 
-	std::vector<char> syn_read_chunk_body()
+	vector<char> syn_read_chunk_body()
 	{
 		if(chunk_remain_size>0)
 		{
-			return this->syn_read_chunk_data(buffer_size);
+			return syn_read_chunk_data(buffer_size);
 
 		}else
 		{
@@ -90,31 +92,24 @@ public:
 			size_t content_size=boost::asio::read_until(*m_sock,respone_,"\r\n");
 
 			boost::asio::streambuf::const_buffers_type bufs = respone_.data();
-			std::string  data_len(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+content_size);
+			string  data_len(boost::asio::buffers_begin(bufs),boost::asio::buffers_begin(bufs)+content_size);
 			next_chunk_size=strtol(data_len.c_str(),NULL,16);
 			respone_.consume(content_size);
 
 			if(next_chunk_size>0)
 			{
                 chunk_remain_size=next_chunk_size+2;
-				return this->syn_read_chunk_data(buffer_size);
+				return syn_read_chunk_data(buffer_size);
 				
 			}else
 			{
-				this->m_chunk_end=true;
-				return std::vector<char>();
+				m_chunk_end=true;
+				return vector<char>();
 			}
-
 		}
-
 	}
-
 	
 };
-
-		
-
-
 
 }
 

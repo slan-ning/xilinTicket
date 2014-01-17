@@ -1,30 +1,31 @@
 #pragma once
 #include <string>
 
+using namespace std;
 
-// CYzDlg 对话框
-class CHuoche;
+// CVerifyDlg 对话框
+class CTrain;
 
-class CYzDlg : public CDialogEx
+class CVerifyDlg : public CDialogEx
 {
-	DECLARE_DYNAMIC(CYzDlg)
+	DECLARE_DYNAMIC(CVerifyDlg)
 
 public:
-	CYzDlg(CWnd* pParent = NULL);   // 标准构造函数
-	virtual ~CYzDlg();
+	CVerifyDlg(CWnd* pParent = NULL);   // 标准构造函数
+	virtual ~CVerifyDlg();
 
 // 对话框数据
-	enum { IDD = IDD_YZDLG };
+	enum { IDD = IDD_VERIFY_DLG };
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 	DECLARE_MESSAGE_MAP()
 public:
-	CHuoche* huoche;
-	std::string yzcode;
-    std::string file_path;
-	afx_msg void OnBnClickedButton1();
+	CTrain* m_pTrain;
+	string m_sVercode;
+    string m_spath;
+	afx_msg void OnBnClickedOK();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnPaint();
 	afx_msg void OnStnClickedPic2();

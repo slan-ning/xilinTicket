@@ -27,13 +27,13 @@ namespace echttp {
  * To extract the components of a URL:
  * @code
  * avhttp::url url("http://user:pass@host:1234/dir/page?param=0#anchor");
- * std::cout << "Protocol: " << url.protocol() << std::endl;
- * std::cout << "User Info: " << url.user_info() << std::endl;
- * std::cout << "Host: " << url.host() << std::endl;
- * std::cout << "Port: " << url.port() << std::endl;
- * std::cout << "Path: " << url.path() << std::endl;
- * std::cout << "Query: " << url.query() << std::endl;
- * std::cout << "Fragment: " << url.fragment() << std::endl;
+ * cout << "Protocol: " << url.protocol() << endl;
+ * cout << "User Info: " << url.user_info() << endl;
+ * cout << "Host: " << url.host() << endl;
+ * cout << "Port: " << url.port() << endl;
+ * cout << "Path: " << url.path() << endl;
+ * cout << "Query: " << url.query() << endl;
+ * cout << "Fragment: " << url.fragment() << endl;
  * @endcode
  * The above code will print:
  * @code
@@ -83,7 +83,7 @@ public:
 	 *
 	 * @throws boost::system::system_error Thrown when the URL string is invalid.
 	 */
-	url(const std::string& s)
+	url(const string& s)
 		: ipv6_host_(false)
 	{
 		*this = from_string(s);
@@ -94,7 +94,7 @@ public:
 	 * @returns A string specifying the protocol of the URL. Examples include
 	 * @c http, @c https or @c file.
 	 */
-	std::string protocol() const
+	string protocol() const
 	{
 		return protocol_;
 	}
@@ -104,7 +104,7 @@ public:
 	 * @returns A string containing the user info of the URL. Typically in the
 	 * format <tt>user:password</tt>, but depends on the protocol.
 	 */
-	std::string user_info() const
+	string user_info() const
 	{
 		return user_info_;
 	}
@@ -113,12 +113,12 @@ public:
 	/**
 	 * @returns A string containing the host name of the URL.
 	 */
-	std::string host() const
+	string host() const
 	{
 		return "kyfw.12306.cn";
 	}
 
-    std::string ip() const
+    string ip() const
 	{
 		return host_;
 	}
@@ -134,7 +134,7 @@ public:
 	unsigned short port() const
 	{
 		if (!port_.empty())
-			return std::atoi(port_.c_str());
+			return atoi(port_.c_str());
 		if (protocol_ == "http")
 			return 80;
 		if (protocol_ == "https")
@@ -152,9 +152,9 @@ public:
 	 * The path string is unescaped. To obtain the path in escaped form, use
 	 * @c to_string(url::path_component).
 	 */
-	std::string path() const
+	string path() const
 	{
-		std::string tmp_path;
+		string tmp_path;
 		detail::unescape_path(path_, tmp_path);
 		return tmp_path;
 	}
@@ -167,7 +167,7 @@ public:
 	 * The query string is not unescaped, but is returned in whatever form it
 	 * takes in the original URL string.
 	 */
-	std::string query() const
+	string query() const
 	{
 		return query_;
 	}
@@ -176,14 +176,14 @@ public:
 	/**
 	 * @returns A string containing the fragment of the URL.
 	 */
-	std::string fragment() const
+	string fragment() const
 	{
 		return fragment_;
 	}
 
-    std::string request_uri() const
+    string request_uri() const
     {
-       std::string uri=path_;
+       string uri=path_;
        if(query_!="")
        {
            uri+="?"+query_;
@@ -220,18 +220,18 @@ public:
 	 * @par Examples
 	 * To convert the entire URL to a string:
 	 * @code
-	 * std::string s = url.to_string();
+	 * string s = url.to_string();
 	 * @endcode
 	 * To convert only the host and port number into a string:
 	 * @code
-	 * std::string s = url.to_string(
+	 * string s = url.to_string(
 	 *     urdl::url::host_component
 	 *     | urdl::url::port_component);
 	 * @endcode
 	 */
-	std::string to_string(int components = all_components) const
+	string to_string(int components = all_components) const
 	{
-		std::string s;
+		string s;
 
 		if ((components & protocol_component) != 0 && !protocol_.empty())
 		{
@@ -313,10 +313,10 @@ public:
 		url new_url;
 
 		// Protocol.
-		std::size_t length = std::strcspn(s, ":");
+		size_t length = strcspn(s, ":");
 		new_url.protocol_.assign(s, s + length);
-		for (std::size_t i = 0; i < new_url.protocol_.length(); ++i)
-			new_url.protocol_[i] = std::tolower(new_url.protocol_[i]);
+		for (size_t i = 0; i < new_url.protocol_.length(); ++i)
+			new_url.protocol_[i] = tolower(new_url.protocol_[i]);
 		s += length;
 
 		// "://".
@@ -337,7 +337,7 @@ public:
 		}
 
 		// UserInfo.
-		length = std::strcspn(s, "@:[/?#");
+		length = strcspn(s, "@:[/?#");
 		if (s[length] == '@')
 		{
 			new_url.user_info_.assign(s, s + length);
@@ -345,7 +345,7 @@ public:
 		}
 		else if (s[length] == ':')
 		{
-			std::size_t length2 = std::strcspn(s + length, "@/?#");
+			size_t length2 = strcspn(s + length, "@/?#");
 			if (s[length + length2] == '@')
 			{
 				new_url.user_info_.assign(s, s + length + length2);
@@ -356,7 +356,7 @@ public:
 		// Host.
 		if (*s == '[')
 		{
-			length = std::strcspn(++s, "]");
+			length = strcspn(++s, "]");
 			if (s[length] != ']')
 			{
 				ec = make_error_code(boost::system::errc::invalid_argument);
@@ -365,7 +365,7 @@ public:
 			new_url.host_.assign(s, s + length);
 			new_url.ipv6_host_ = true;
 			s += length + 1;
-			if (std::strcspn(s, ":/?#") != 0)
+			if (strcspn(s, ":/?#") != 0)
 			{
 				ec = make_error_code(boost::system::errc::invalid_argument);
 				return url();
@@ -373,7 +373,7 @@ public:
 		}
 		else
 		{
-			length = std::strcspn(s, ":/?#");
+			length = strcspn(s, ":/?#");
 			new_url.host_.assign(s, s + length);
 			s += length;
 		}
@@ -381,16 +381,16 @@ public:
 		// Port.
 		if (*s == ':')
 		{
-			length = std::strcspn(++s, "/?#");
+			length = strcspn(++s, "/?#");
 			if (length == 0)
 			{
 				ec = make_error_code(boost::system::errc::invalid_argument);
 				return url();
 			}
 			new_url.port_.assign(s, s + length);
-			for (std::size_t i = 0; i < new_url.port_.length(); ++i)
+			for (size_t i = 0; i < new_url.port_.length(); ++i)
 			{
-				if (!std::isdigit(new_url.port_[i]))
+				if (!isdigit(new_url.port_[i]))
 				{
 					ec = make_error_code(boost::system::errc::invalid_argument);
 					return url();
@@ -402,9 +402,9 @@ public:
 		// Path.
 		if (*s == '/')
 		{
-			length = std::strcspn(s, "?#");
+			length = strcspn(s, "?#");
 			new_url.path_.assign(s, s + length);
-			std::string tmp_path;
+			string tmp_path;
 			if (!detail::unescape_path(new_url.path_, tmp_path))
 			{
 				// ec = make_error_code(boost::system::errc::invalid_argument);
@@ -418,7 +418,7 @@ public:
 		// Query.
 		if (*s == '?')
 		{
-			length = std::strcspn(++s, "#");
+			length = strcspn(++s, "#");
 			new_url.query_.assign(s, s + length);
 			s += length;
 		}
@@ -439,7 +439,7 @@ public:
 	 *
 	 * @throws boost::system::system_error Thrown when the URL string is invalid.
 	 */
-	static url from_string(const std::string& s)
+	static url from_string(const string& s)
 	{
 		return from_string(s.c_str());
 	}
@@ -452,7 +452,7 @@ public:
 	 *
 	 * @returns A @c url object corresponding to the specified string.
 	 */
-	static url from_string(const std::string& s, boost::system::error_code& ec)
+	static url from_string(const string& s, boost::system::error_code& ec)
 	{
 		return from_string(s.c_str(), ec);
 	}
@@ -513,13 +513,13 @@ public:
 
 private:
 
-	std::string protocol_;
-	std::string user_info_;
-	std::string host_;
-	std::string port_;
-	std::string path_;
-	std::string query_;
-	std::string fragment_;
+	string protocol_;
+	string user_info_;
+	string host_;
+	string port_;
+	string path_;
+	string query_;
+	string fragment_;
 	bool ipv6_host_;
 };
 

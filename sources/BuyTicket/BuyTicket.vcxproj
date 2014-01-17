@@ -19,14 +19,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110_xp</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v100</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -43,13 +42,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\lib\boost\;C:\OpenSSL\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\OpenSSL\lib;E:\lib\boost\stage\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\boost;..\com\include;$(IncludePath)</IncludePath>
+    <LibraryPath>..\com\lib;D:\boost\libs;$(LibraryPath)</LibraryPath>
+    <IgnoreImportLibrary>false</IgnoreImportLibrary>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>E:\lib\boost\;C:\OpenSSL\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\OpenSSL\lib;E:\lib\boost\stage\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\boost\;..\com\include;$(IncludePath)</IncludePath>
+    <LibraryPath>..\com\lib;D:\boost\libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -58,11 +58,20 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>libeay32.lib;ssleay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -74,6 +83,9 @@
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -109,6 +121,7 @@
   <ItemGroup>
     <ClInclude Include="BuyTicket.h" />
     <ClInclude Include="BuyTicketDlg.h" />
+    <ClInclude Include="cJSON.h" />
     <ClInclude Include="echttp\client.hpp" />
     <ClInclude Include="echttp\common.hpp" />
     <ClInclude Include="echttp\cookie.hpp" />
@@ -120,24 +133,32 @@
     <ClInclude Include="echttp\request.hpp" />
     <ClInclude Include="echttp\respone.hpp" />
     <ClInclude Include="echttp\url.hpp" />
-    <ClInclude Include="Huoche.h" />
+    <ClInclude Include="Quick\QuickEdit.h" />
+    <ClInclude Include="Quick\QuickList.h" />
+    <ClInclude Include="Quick\theme.h" />
+    <ClInclude Include="Quick\ThemeLib.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Ticket.hpp" />
+    <ClInclude Include="Ticket.h" />
+    <ClInclude Include="Train.h" />
+    <ClInclude Include="VerifyDlg.h" />
     <ClInclude Include="xxtea.h" />
-    <ClInclude Include="YzDlg.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BuyTicket.cpp" />
     <ClCompile Include="BuyTicketDlg.cpp" />
-    <ClCompile Include="Huoche.cpp" />
+    <ClCompile Include="cJSON.cpp" />
+    <ClCompile Include="Quick\QuickEdit.cpp" />
+    <ClCompile Include="Quick\QuickList.cpp" />
+    <ClCompile Include="Quick\theme.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Train.cpp" />
+    <ClCompile Include="VerifyDlg.cpp" />
     <ClCompile Include="xxtea.cpp" />
-    <ClCompile Include="YzDlg.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="BuyTicket.rc" />

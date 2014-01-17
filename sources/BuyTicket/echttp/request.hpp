@@ -13,159 +13,129 @@
 namespace echttp
 {
 
-
 class request
 {
-
 public:
 
-	cookie_option m_cookies;
-	header_option m_header;
+    cookie_option m_cookies;
+    header_option m_header;
 
-    std::string proxy_ip;
-    std::string proxy_port;
+    string proxy_ip;
+    string proxy_port;
 
-	request(void)
-	{
-		this->m_defalut_user_agent="Echoes Http Client";
-        this->m_defalut_connection="Keep-Alive";
-        this->m_defalut_accept="*/*";
-	}
+    request(void) {
+        m_defalut_user_agent="Echoes Http Client";
+        m_defalut_connection="Keep-Alive";
+        m_defalut_accept="*/*";
+    }
 
-	~request(void)
-	{
-	}
+    ~request(void) {
+    }
 
-	void set_defalut_userAgent(std::string user_agent)
-	{
-		this->m_defalut_user_agent=user_agent;
-	}
+    void set_defalut_userAgent(string user_agent) {
+        m_defalut_user_agent=user_agent;
+    }
 
-	void set_defalut_accept(std::string accept)
-	{
-		this->m_defalut_accept=accept;
-	}
+    void set_defalut_accept(string accept) {
+        m_defalut_accept=accept;
+    }
 
-	void set_defalut_connection(std::string connection)
-	{
-		this->m_defalut_connection=connection;
-	}
+    void set_defalut_connection(string connection) {
+        m_defalut_connection=connection;
+    }
 
-	void set_defalut_referer(std::string referer)
-	{
-		this->m_defalut_referer=referer;
-	}
-    
+    void set_defalut_referer(string referer) {
+        m_defalut_referer=referer;
+    }
 
-    up_task make_task(std::string method,const url &u)
-    {
-        up_task task(this->get_header(method,u),std::vector<char>(),false);
-        this->set_task_connection(task,u);
+    up_task make_task(string method,const url &u) {
+        up_task task(get_header(method,u),vector<char>(),false);
+        set_task_connection(task,u);
         return task;
     }
 
-    up_task make_task(std::string method, const url &u,std::vector<char> data)
-    {
-		if (this->m_header.find("Content-Length")=="")
-        {
-			this->m_header.insert("Content-Length",echttp::convert<std::string>(data.size()));
-		}
-        if(method=="POST" && m_header.find("Content-Type")=="")
-        {
-            this->m_header.insert("Content-Type","application/x-www-form-urlencoded");
+    up_task make_task(string method, const url &u,vector<char> data) {
+        if (m_header.find("Content-Length")=="") {
+            m_header.insert("Content-Length",echttp::convert<string>(data.size()));
         }
-
-        up_task task(this->get_header(method,u),data,false);
-        this->set_task_connection(task,u);
+        if(method=="POST" && m_header.find("Content-Type")=="") {
+            m_header.insert("Content-Type","application/x-www-form-urlencoded");
+        }
+        up_task task(get_header(method,u),data,false);
+        set_task_connection(task,u);
         return task;
-        
     }
 
-    up_task make_file_task(std::string method,const url &u,std::vector<char> path,size_t pos=0,size_t size=0)
-    {
-        if (this->m_header.find("Content-Length")=="")
-        {
+    up_task make_file_task(string method,const url &u,vector<char> path,size_t pos=0,size_t size=0) {
+        if (m_header.find("Content-Length")=="") {
             size_t file_size=fs::file_size(path);
-            this->m_header.insert("Content-Length",echttp::convert<std::string>(file_size));
-        }
-       
-        if(method=="POST" && m_header.find("Content-Type")=="")
-        {
-            this->m_header.insert("Content-Type","application/x-www-form-urlencoded");
+            m_header.insert("Content-Length",echttp::convert<string>(file_size));
         }
 
-        up_task task(this->get_header(method,u),path,true,pos,size);
-        this->set_task_connection(task,u);
+        if(method=="POST" && m_header.find("Content-Type")=="") {
+            m_header.insert("Content-Type","application/x-www-form-urlencoded");
+        }
+
+        up_task task(get_header(method,u),path,true,pos,size);
+        set_task_connection(task,u);
         return task;
     }
 
 private:
-    std::string m_defalut_user_agent;
-    std::string m_defalut_connection;
-    std::string m_defalut_accept;
-	std::string m_defalut_referer;
+    string m_defalut_user_agent;
+    string m_defalut_connection;
+    string m_defalut_accept;
+    string m_defalut_referer;
 
-    std::string get_header(std::string method,const url &u)
-    {
-        this->set_common_header();
-        this->m_header.insert("Host",u.host());
+    string get_header(string method,const url &u) {
+        set_common_header();
+        m_header.insert("Host",u.host());
 
-        std::string cookie_string=this->m_cookies.cookie_string();
-        if(cookie_string!="")
-        {
-            this->m_header.insert("Cookie",cookie_string);
+        string cookie_string=m_cookies.cookie_string();
+        if(cookie_string!="") {
+            m_header.insert("Cookie",cookie_string);
         }
 
-        std::string uri=u.request_uri();
-        if(this->proxy_ip!="" && this->proxy_port!="")
-        {
+        string uri=u.request_uri();
+        if(proxy_ip!="" && proxy_port!="") {
             uri=u.protocol()+"://"+u.host()+uri;
         }
 
-        std::string header=method+" "+uri+" HTTP/1.1\r\n";
-        header+=this->m_header.header_string();
+        string header=method+" "+uri+" HTTP/1.1\r\n";
+        header+=m_header.header_string();
         header+="\r\n";
 
-        this->m_header.clear();
+        m_header.clear();
         return header;
     }
 
-    void set_common_header()
-    {
-        if(this->m_header.find("User-Agent")=="")
-        {
-            this->m_header.insert("User-Agent",this->m_defalut_user_agent);
+    void set_common_header() {
+        if(m_header.find("User-Agent")=="") {
+            m_header.insert("User-Agent",m_defalut_user_agent);
         }
 
-        if(this->m_header.find("Connection")=="")
-        {
-            this->m_header.insert("Connection",this->m_defalut_connection);
+        if(m_header.find("Connection")=="") {
+            m_header.insert("Connection",m_defalut_connection);
         }
 
-        if(this->m_header.find("Accept")=="")
-        {
-            this->m_header.insert("Accept",this->m_defalut_accept);
+        if(m_header.find("Accept")=="") {
+            m_header.insert("Accept",m_defalut_accept);
         }
 
-		if(this->m_header.find("Referer")=="")
-        {
-            this->m_header.insert("Referer",this->m_defalut_referer);
+        if(m_header.find("Referer")=="") {
+            m_header.insert("Referer",m_defalut_referer);
         }
     }
 
-	void set_task_connection(up_task &task,const url &u)
-    {
-        if(this->proxy_ip!="" && this->proxy_port!="")
-        {
-            task.ip=this->proxy_ip;
-            task.port=this->proxy_port;
-        }else
-		{
-			task.ip=u.ip();
-			task.port=echttp::convert<std::string>(u.port());
-		}
-        if(u.protocol()=="https")
-        {
+    void set_task_connection(up_task &task,const url &u) {
+        if(proxy_ip!="" && proxy_port!="") {
+            task.ip=proxy_ip;
+            task.port=proxy_port;
+        } else {
+            task.ip=u.ip();
+            task.port=echttp::convert<string>(u.port());
+        }
+        if(u.protocol()=="https") {
             task.is_ssl=true;
         }
 
