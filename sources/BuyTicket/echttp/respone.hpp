@@ -17,25 +17,25 @@ public:
     ~respone();
 
     int         error_code;
-	std::string error_msg;//错误信息
+	string error_msg;//错误信息
 
     int status_code;//http状态码
     header_option header;//返回头部
 
     size_t length;//返回内容大小
-	std::vector<char> body;//返回内容
+	vector<char> body;//返回内容
 
-    std::string save_path;//保存文件path，若下载文件，则此值为文件路径
+    string save_path;//保存文件path，若下载文件，则此值为文件路径
 
-	bool parse_header(std::string);
+	bool parse_header(string);
 
-    bool save_body(std::vector<char> buffer);
+    bool save_body(vector<char> buffer);
 
     void notify_status(int type,size_t total,size_t now);
 
     void register_notify_callback(StatusCallBack cb);
 
-	std::string as_string();
+	string as_string();
 
 private:
     StatusCallBack m_status_cb;
@@ -52,55 +52,55 @@ respone::~respone()
 {
 }
 
-bool respone::parse_header(std::string header_str)
+bool respone::parse_header(string header_str)
 {
-	if(header_str.find("HTTP")!=std::string::npos)
+	if(header_str.find("HTTP")!=string::npos)
 	{
-		std::string h=header_str.substr(header_str.find(" ")+1);
+		string h=header_str.substr(header_str.find(" ")+1);
 		h=h.substr(0,h.find(" "));
-		this->status_code=convert<int,std::string>(h);
+		status_code=convert<int,string>(h);
 
 		boost::smatch result;
-		std::string regtxt("\\b(.+?): (.*?)\r\n");
+		string regtxt("\\b(.+?): (.*?)\r\n");
 		boost::regex rx(regtxt);
 
-		std::string::const_iterator it=header_str.begin();
-		std::string::const_iterator end=header_str.end();
+		string::const_iterator it=header_str.begin();
+		string::const_iterator end=header_str.end();
 
 		while (regex_search(it,end,result,rx))
 		{
-			std::string key=result[1];
-			std::string value=result[2];
-			this->header.insert(key,value);
+			string key=result[1];
+			string value=result[2];
+			header.insert(key,value);
 			it=result[0].second;
 		}
         return true;
 
 	}else
 	{
-		this->status_code=-1;
-        this->error_code=10;
-        this->error_msg="inviald header string.";
+		status_code=-1;
+        error_code=10;
+        error_msg="inviald header string.";
         return false;
 	}
 }
 
-bool respone::save_body(std::vector<char> buffer)
+bool respone::save_body(vector<char> buffer)
 {
-    if (this->save_path=="")
+    if (save_path=="")
     {
-        this->body.insert(this->body.end(),buffer.begin(),buffer.end());
-        this->length+=buffer.size();
+        body.insert(body.end(),buffer.begin(),buffer.end());
+        length+=buffer.size();
     }else
     {
         file myfile;
         boost::system::error_code ec;
-        myfile.open(this->save_path,ec);
+        myfile.open(save_path,ec);
 
         if(myfile.is_open())
         {
             myfile.write(&buffer.front(),length,buffer.size());
-            this->length+=buffer.size();
+            length+=buffer.size();
         }
         myfile.close();
     }
@@ -109,20 +109,20 @@ bool respone::save_body(std::vector<char> buffer)
 
 void respone::register_notify_callback(StatusCallBack cb)
 {
-    this->m_status_cb=cb;
+    m_status_cb=cb;
 }
 
 void respone::notify_status(int type,size_t total,size_t now)
 {
-    if(this->m_status_cb)
+    if(m_status_cb)
     {
-        this->m_status_cb(type,total,now);
+        m_status_cb(type,total,now);
     }
 }
 
-std::string respone::as_string()
+string respone::as_string()
 {
-	return std::string(this->body.begin(),this->body.end());
+	return string(body.begin(),body.end());
 }
 
 	

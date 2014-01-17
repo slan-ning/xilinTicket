@@ -1,3 +1,5 @@
+#pragma once
+
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 
@@ -5,8 +7,6 @@ namespace echttp
 {
 	class iopool
 	{
-		
-
 	    public:
 	    	static iopool * pool;
 
